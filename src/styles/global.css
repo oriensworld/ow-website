@@ -82,6 +82,43 @@
   50% { opacity: 0.4; }
 }
 
+/* ─── Hero Ambient Drift Keyframes ─── */
+
+@keyframes hero-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(10px, -14px); }
+  50% { transform: translate(-8px, 6px); }
+  75% { transform: translate(14px, 10px); }
+}
+
+@keyframes hero-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-12px, 8px); }
+  50% { transform: translate(6px, -16px); }
+  75% { transform: translate(-10px, 12px); }
+}
+
+@keyframes hero-drift-3 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(8px, 12px); }
+  50% { transform: translate(-14px, -6px); }
+  75% { transform: translate(6px, -10px); }
+}
+
+@keyframes hero-drift-4 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-6px, -10px); }
+  50% { transform: translate(12px, 14px); }
+  75% { transform: translate(-10px, 4px); }
+}
+
+@keyframes hero-drift-5 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(14px, 6px); }
+  50% { transform: translate(-4px, -12px); }
+  75% { transform: translate(-8px, 8px); }
+}
+
 /* ═══════════════════════════════════════════
    CSS Scroll Reveal
    ═══════════════════════════════════════════ */
@@ -163,38 +200,6 @@ body {
 }
 
 /* ═══════════════════════════════════════════
-   Scrolling Marquee
-   ═══════════════════════════════════════════ */
-
-.marquee-mask {
-  mask-image: linear-gradient(
-    to right,
-    transparent 0%,
-    black 10%,
-    black 90%,
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0%,
-    black 10%,
-    black 90%,
-    transparent 100%
-  );
-}
-
-.marquee-track {
-  display: flex;
-  width: max-content;
-  animation: marquee-scroll 40s linear infinite;
-}
-
-@keyframes marquee-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-/* ═══════════════════════════════════════════
    Floating Thumbnails (drag-interactive)
    ═══════════════════════════════════════════ */
 
@@ -207,6 +212,18 @@ body {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(6px); }
   75% { transform: translateX(-6px); }
+}
+
+/* ═══════════════════════════════════════════
+   Hero Viewport — full-screen unscrollable canvas
+   ═══════════════════════════════════════════ */
+
+.hero-viewport {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  z-index: 1;
 }
 
 /* ═══════════════════════════════════════════
