@@ -34,7 +34,7 @@ import { SOCIAL_LINKS } from "@lib/constants";
 
   {/* Story */}
   <Section class="py-16">
-    <div class="bg-bg-card border border-border rounded-2xl p-10">
+    <div class="bg-bg-card p-10" style="filter: drop-shadow(0 0 0.5px var(--color-border))" data-squircle="20">
       <h2 class="text-xl font-semibold tracking-tight mb-4">Our Story</h2>
       <div class="space-y-4 text-sm font-normal leading-relaxed text-text-secondary">
         <p>
@@ -64,7 +64,7 @@ import { SOCIAL_LINKS } from "@lib/constants";
     <h2 class="text-xl font-semibold tracking-tight mb-6">Milestones</h2>
     <div class="flex flex-col gap-5">
       {milestones.map((m) => (
-        <div class="bg-bg-card border border-border rounded-2xl p-8 hover:border-border-hover transition-colors">
+        <div class="bg-bg-card p-8 transition-[filter] duration-300 hover:[filter:drop-shadow(0_0_0.5px_var(--color-border-hover))]" style="filter: drop-shadow(0 0 0.5px var(--color-border))" data-squircle="16">
           <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
             <h3 class="text-base font-medium">
               {m.title} — {m.field}
@@ -89,7 +89,7 @@ import { SOCIAL_LINKS } from "@lib/constants";
     <h2 class="text-xl font-semibold tracking-tight mb-6">Services & Capabilities</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       {skills.map((skill) => (
-        <div class="bg-bg-card border border-border rounded-2xl p-8 hover:border-teal-dim transition-colors relative overflow-hidden group">
+        <div class="bg-bg-card p-8 transition-[filter] duration-300 hover:[filter:drop-shadow(0_0_1px_var(--color-teal-dim))] relative overflow-hidden group" style="filter: drop-shadow(0 0 0.5px var(--color-border))" data-squircle="16">
           {/* Top gradient bar on hover */}
           <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-teal to-cyan opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
@@ -102,7 +102,7 @@ import { SOCIAL_LINKS } from "@lib/constants";
           </p>
           <div class="flex gap-1.5 flex-wrap">
             {skill.tools.map((tool) => (
-              <span class="font-mono text-[0.6rem] text-text-tertiary bg-[rgba(255,255,255,0.04)] border border-border px-2 py-0.5 rounded-md">
+              <span class="font-mono text-[0.6rem] text-text-tertiary bg-[rgba(255,255,255,0.04)] px-2 py-0.5" style="filter: drop-shadow(0 0 0.5px var(--color-border))" data-squircle="6">
                 {tool}
               </span>
             ))}
@@ -114,7 +114,7 @@ import { SOCIAL_LINKS } from "@lib/constants";
 
   {/* Contact */}
   <Section class="py-16">
-    <div id="contact" class="bg-bg-card border border-border rounded-2xl p-10 text-center relative overflow-hidden">
+    <div id="contact" class="bg-bg-card p-10 text-center relative overflow-hidden" style="filter: drop-shadow(0 0 0.5px var(--color-border))" data-squircle="20">
       <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-teal to-cyan"></div>
       <h2 class="text-xl font-semibold tracking-tight mb-4">Start a Project</h2>
       <p class="text-sm font-normal text-text-secondary mb-8 max-w-[400px] mx-auto">
@@ -125,6 +125,7 @@ import { SOCIAL_LINKS } from "@lib/constants";
         <a
           href={`mailto:${SOCIAL_LINKS.email}`}
           class="btn-glow"
+          data-squircle="10"
         >
           Get in Touch
         </a>
@@ -133,6 +134,7 @@ import { SOCIAL_LINKS } from "@lib/constants";
           target="_blank"
           rel="noopener noreferrer"
           class="btn-outline"
+          data-squircle="10"
         >
           LinkedIn
         </a>
@@ -141,6 +143,7 @@ import { SOCIAL_LINKS } from "@lib/constants";
           target="_blank"
           rel="noopener noreferrer"
           class="btn-outline"
+          data-squircle="10"
         >
           GitHub
         </a>

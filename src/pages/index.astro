@@ -1,146 +1,23 @@
 ---
 import BaseLayout from "@layouts/BaseLayout.astro";
-import Section from "@components/astro/Section.astro";
 import HeroAnimated from "@components/react/HeroAnimated";
-import SectionHeader from "@components/astro/SectionHeader.astro";
-import ProjectCard from "@components/astro/ProjectCard.astro";
 import { getCollection } from "astro:content";
 
 const allProjects = await getCollection("projects");
-const featuredProjects = allProjects
+const heroProjects = allProjects
   .sort((a, b) => a.data.order - b.data.order)
-  .slice(0, 6);
-
-const allPosts = await getCollection("blog");
-const recentPosts = allPosts
-  .filter((p) => !p.data.draft)
-  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
-  .slice(0, 4);
+  .slice(0, 12)
+  .map((p) => ({
+    title: p.data.title,
+    icon: p.data.icon,
+    category: p.data.category,
+    slug: p.id.replace(/\.mdx?$/, ""),
+  }));
 ---
 
-<BaseLayout title="Home">
-  <!-- Hero -->
-  <Section class="min-h-dvh flex flex-col items-center justify-center pt-32 pb-16">
-    <HeroAnimated client:load />
-  </Section>
-
-  <!-- Projects -->
-  <Section class="py-24" id="projects">
-    <div class="reveal">
-      <SectionHeader title="Projects" overline="selected_work" />
-    </div>
-
-    <div class="reveal reveal-delay-1">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {featuredProjects.map((project) => (
-          <ProjectCard
-            title={project.data.title}
-            description={project.data.description}
-            category={project.data.category}
-            icon={project.data.icon}
-            tags={project.data.tags}
-            slug={project.id.replace(/\.mdx?$/, "")}
-            featured={project.data.featured}
-          />
-        ))}
-      </div>
-    </div>
-
-    <div class="reveal reveal-delay-2 text-center mt-12">
-      <a
-        href="/projects"
-        class="btn-outline inline-flex"
-      >
-        View All Projects
-        <span class="text-xs">→</span>
-      </a>
-    </div>
-  </Section>
-
-  <!-- Blog -->
-  <Section class="py-24" id="blog">
-    <div class="reveal">
-      <SectionHeader title="Blog" overline="writing" />
-    </div>
-
-    <div class="reveal reveal-delay-1">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {recentPosts.map((post) => (
-          <a
-            href={`/blog/${post.id.replace(/\.mdx?$/, "")}`}
-            class="omnius-card block no-underline group"
-          >
-            <div class="flex items-center gap-2 mb-3">
-              {post.data.category && (
-                <span class="font-mono text-[0.65rem] text-teal tracking-[0.1em] uppercase">
-                  {post.data.category}
-                </span>
-              )}
-              <span class="font-mono text-[0.6rem] text-text-tertiary tracking-[0.05em]">
-                {post.data.pubDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-              </span>
-            </div>
-
-            <h3 class="text-base font-semibold tracking-tight text-text-primary mb-2 group-hover:text-teal transition-colors">
-              {post.data.title}
-            </h3>
-
-            <p class="text-sm font-normal leading-relaxed text-text-secondary mb-4">
-              {post.data.description}
-            </p>
-
-            <div class="flex gap-1.5 flex-wrap">
-              {post.data.tags.map((tag) => (
-                <span class="font-mono text-[0.6rem] text-text-tertiary bg-[rgba(255,255,255,0.04)] border border-border px-2 py-0.5 rounded-md group-hover:border-border-hover group-hover:text-text-secondary transition-colors">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </a>
-        ))}
-      </div>
-    </div>
-
-    <div class="reveal reveal-delay-2 text-center mt-12">
-      <a
-        href="/blog"
-        class="btn-outline inline-flex"
-      >
-        View All Posts
-        <span class="text-xs">→</span>
-      </a>
-    </div>
-  </Section>
-
-  <!-- About Summary -->
-  <Section class="py-24" id="about">
-    <div class="reveal">
-      <div class="max-w-[800px] mx-auto bg-bg-card border border-border rounded-2xl p-16 text-center relative overflow-hidden">
-        <!-- Rotating conic gradient -->
-        <div class="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] opacity-30 pointer-events-none" style="background: conic-gradient(from 0deg, transparent, rgba(45,212,191,0.12), transparent, rgba(45,212,191,0.12), transparent); animation: about-rotate 15s linear infinite;"></div>
-
-        <div class="relative z-1">
-          <p class="font-mono text-[0.7rem] text-teal tracking-[0.15em] uppercase mb-6">
-            About
-          </p>
-          <blockquote class="text-3xl font-semibold leading-snug tracking-tight mb-6">
-            We turn <span class="gradient-text-teal">bold ideas</span> into
-            reality across every medium.
-          </blockquote>
-          <p class="text-[0.9rem] font-normal leading-relaxed text-text-secondary max-w-[500px] mx-auto">
-            nap of the earth is a cross-disciplinary studio offering architecture,
-            graphic design, web development, software engineering, and game development
-            services. We bridge physical and digital design.
-          </p>
-          <a
-            href="/about"
-            class="btn-outline inline-flex mt-8"
-          >
-            More About Us
-            <span class="text-xs">→</span>
-          </a>
-        </div>
-      </div>
-    </div>
-  </Section>
+<BaseLayout title="Home" fullscreen>
+  <!-- Hero — full-viewport, unscrollable canvas with floating objects -->
+  <div class="hero-viewport">
+    <HeroAnimated client:load projects={heroProjects} />
+  </div>
 </BaseLayout>

@@ -34,11 +34,15 @@ export default function BlogFilter({ posts, categories }: Props) {
           <button
             key={cat}
             onClick={() => setActive(cat)}
-            className={`font-mono text-[0.7rem] tracking-[0.1em] uppercase px-4 py-2 rounded-full border transition-all cursor-pointer ${
+            className={`font-mono text-[0.7rem] tracking-[0.1em] uppercase px-4 py-2 transition-all cursor-pointer ${
               active === cat
-                ? "bg-teal text-bg border-teal"
-                : "bg-transparent text-text-secondary border-border hover:border-border-hover hover:text-text-primary"
+                ? "bg-teal text-bg"
+                : "bg-transparent text-text-secondary hover:text-text-primary"
             }`}
+            style={{
+              filter: active === cat ? undefined : "drop-shadow(0 0 0.5px var(--color-border))",
+            }}
+            data-squircle="8"
           >
             {cat}
             <span className="ml-1.5 opacity-60">{countFor(cat)}</span>
@@ -52,7 +56,7 @@ export default function BlogFilter({ posts, categories }: Props) {
           {filtered.map((post) => (
             <motion.a
               key={post.id}
-              href={`/blog/${post.id}`}
+              href={`/archive/${post.id}`}
               layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -87,7 +91,9 @@ export default function BlogFilter({ posts, categories }: Props) {
                 {post.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="font-mono text-[0.6rem] text-text-tertiary bg-[rgba(255,255,255,0.04)] border border-border px-2 py-0.5 rounded-md group-hover:border-border-hover group-hover:text-text-secondary transition-colors"
+                    className="font-mono text-[0.6rem] text-text-tertiary bg-[rgba(255,255,255,0.04)] px-2 py-0.5 group-hover:text-text-secondary transition-colors"
+                    style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
+                    data-squircle="6"
                   >
                     {tag}
                   </span>

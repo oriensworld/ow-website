@@ -58,7 +58,9 @@ export default function ImageGallery({ images, columns = 3 }: Props) {
           <button
             key={img.src}
             onClick={() => setActiveIndex(i)}
-            className="group relative aspect-video rounded-lg overflow-hidden border border-border hover:border-border-hover transition-colors cursor-pointer bg-bg-card"
+            className="group relative aspect-video overflow-hidden cursor-pointer bg-bg-card transition-[filter] duration-300 hover:[filter:drop-shadow(0_0_0.5px_var(--color-border-hover))]"
+            style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
+            data-squircle="8"
           >
             <img
               src={img.src}
@@ -135,7 +137,8 @@ export default function ImageGallery({ images, columns = 3 }: Props) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
+              className="max-w-[90vw] max-h-[85vh] object-contain"
+              data-squircle="12"
               onClick={(e) => e.stopPropagation()}
             />
 

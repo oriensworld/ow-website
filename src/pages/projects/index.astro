@@ -3,7 +3,7 @@ import BaseLayout from "@layouts/BaseLayout.astro";
 import Section from "@components/astro/Section.astro";
 import ProjectFilter from "@components/react/ProjectFilter";
 import { getCollection } from "astro:content";
-import { PROJECT_CATEGORIES, PROJECT_CONTEXTS } from "@lib/constants";
+import { CATEGORY_HIERARCHY, PROJECT_CONTEXTS } from "@lib/constants";
 
 const allProjects = await getCollection("projects");
 const projects = allProjects
@@ -18,9 +18,15 @@ const projects = allProjects
     tags: p.data.tags,
     featured: p.data.featured,
   }));
+
+// Deep clone to make serializable for client component
+const hierarchy = CATEGORY_HIERARCHY.map((g) => ({
+  label: g.label,
+  ...(g.children ? { children: [...g.children] } : {}),
+}));
 ---
 
-<BaseLayout title="Projects" description="Selected work across architecture, software, game development, photography, and graphics.">
+<BaseLayout title="Projects" description="Selected work across architecture, software, game development, web, and graphic design.">
   <Section class="pt-32 pb-8">
     <div class="text-center mb-16">
       <p class="font-mono text-[0.7rem] tracking-[0.15em] uppercase text-teal mb-4">
@@ -39,7 +45,7 @@ const projects = allProjects
     <ProjectFilter
       client:load
       projects={projects}
-      categories={[...PROJECT_CATEGORIES]}
+      categoryHierarchy={hierarchy}
       contexts={[...PROJECT_CONTEXTS]}
     />
   </Section>

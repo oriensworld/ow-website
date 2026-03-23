@@ -9,9 +9,11 @@ interface Props {
   title: string;
   description?: string;
   ogImage?: string;
+  /** Lock viewport — hides footer and prevents scroll (for hero page) */
+  fullscreen?: boolean;
 }
 
-const { title, description, ogImage } = Astro.props;
+const { title, description, ogImage, fullscreen = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -19,7 +21,7 @@ const { title, description, ogImage } = Astro.props;
   <head>
     <BaseHead title={title} description={description} ogImage={ogImage} />
   </head>
-  <body>
+  <body class:list={[{ "h-dvh overflow-hidden": fullscreen }]}>
     <!-- Gradient Mesh Background -->
     <div class="mesh-bg" aria-hidden="true">
       <div class="mesh-orb mesh-orb-1"></div>
@@ -31,7 +33,7 @@ const { title, description, ogImage } = Astro.props;
     <main>
       <slot />
     </main>
-    <Footer />
+    {!fullscreen && <Footer />}
     <ChatWidget client:idle />
     <script is:inline>
       (function() {
@@ -64,6 +66,63 @@ const { title, description, ogImage } = Astro.props;
           setupReveal();
         }
       })();
+    </script>
+    <script>
+      // Superellipse (squircle) clip-path generator
+      // n=5 matches Apple's continuous curvature, 32 pts/corner for smooth curves
+      function cp(w: number, h: number, radius: number): string {
+        const r = Math.min(radius, w / 2, h / 2);
+        if (r <= 0 || w <= 0 || h <= 0) return "none";
+        const n = 5;
+        const exp = 2 / n;
+        const S = 32;
+        const pts: string[] = [];
+        function add(x: number, y: number) {
+          pts.push(((x / w) * 100).toFixed(2) + "% " + ((y / h) * 100).toFixed(2) + "%");
+        }
+        function corner(cx: number, cy: number, sa: number, ea: number) {
+          for (let i = 0; i <= S; i++) {
+            const t = sa + (ea - sa) * (i / S);
+            const ct = Math.cos(t), st = Math.sin(t);
+            add(
+              cx + r * Math.sign(ct) * Math.pow(Math.abs(ct), exp),
+              cy - r * Math.sign(st) * Math.pow(Math.abs(st), exp)
+            );
+          }
+        }
+        // Top edge → top-right corner
+        add(r, 0); add(w - r, 0);
+        corner(w - r, r, Math.PI / 2, 0);
+        // Right edge → bottom-right corner
+        add(w, h - r);
+        corner(w - r, h - r, 0, -Math.PI / 2);
+        // Bottom edge → bottom-left corner
+        add(r, h);
+        corner(r, h - r, -Math.PI / 2, -Math.PI);
+        // Left edge → top-left corner
+        add(0, r);
+        corner(r, r, Math.PI, Math.PI / 2);
+        return "polygon(" + pts.join(",") + ")";
+      }
+      function sq(el: HTMLElement) {
+        const radius = parseInt(el.dataset.squircle || "16", 10);
+        const { width: w, height: h } = el.getBoundingClientRect();
+        if (w > 0 && h > 0) el.style.clipPath = cp(w, h, radius);
+      }
+      // Apply to all current elements
+      document.querySelectorAll<HTMLElement>("[data-squircle]").forEach(sq);
+      // ResizeObserver for responsive recomputation
+      const ro = new ResizeObserver((entries) => {
+        for (const e of entries)
+          if (e.target instanceof HTMLElement && e.target.dataset.squircle) sq(e.target);
+      });
+      document.querySelectorAll<HTMLElement>("[data-squircle]").forEach((el) => ro.observe(el));
+      // MutationObserver for React-hydrated elements
+      new MutationObserver(() => {
+        document.querySelectorAll<HTMLElement>("[data-squircle]").forEach((el) => {
+          if (!el.style.clipPath || el.style.clipPath === "none") { sq(el); ro.observe(el); }
+        });
+      }).observe(document.body, { childList: true, subtree: true });
     </script>
   </body>
 </html>

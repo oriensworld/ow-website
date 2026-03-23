@@ -9,9 +9,11 @@ const { text, class: className } = Astro.props;
 
 <span
   class:list={[
-    "font-mono text-[0.6rem] font-normal text-text-tertiary bg-[rgba(255,255,255,0.04)] border border-border px-2.5 py-0.5 rounded-md",
+    "font-mono text-[0.6rem] font-normal text-text-tertiary bg-[rgba(255,255,255,0.04)] px-2.5 py-0.5",
     className,
   ]}
+  style="filter: drop-shadow(0 0 0.5px var(--color-border))"
+  data-squircle="6"
 >
   {text}
 </span>

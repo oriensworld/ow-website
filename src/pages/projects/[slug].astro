@@ -64,7 +64,7 @@ const related = allProjects
         {/* Tags */}
         <div class="flex gap-2 mt-6 flex-wrap">
           {project.data.tags.map((tag: string) => (
-            <span class="font-mono text-[0.65rem] text-text-tertiary bg-bg-card border border-border px-3 py-1 rounded-md">
+            <span class="font-mono text-[0.65rem] text-text-tertiary bg-bg-card px-3 py-1" style="filter: drop-shadow(0 0 0.5px var(--color-border))" data-squircle="6">
               {tag}
             </span>
           ))}

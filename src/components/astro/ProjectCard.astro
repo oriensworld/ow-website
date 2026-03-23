@@ -18,6 +18,7 @@ const { title, description, category, icon, tags, slug, featured } = Astro.props
     "omnius-card block no-underline group",
     featured && "md:col-span-2",
   ]}
+  data-squircle="16"
 >
   {/* Category */}
   <p class="font-mono text-[0.65rem] font-normal text-teal tracking-[0.08em] uppercase mb-3">
@@ -37,7 +38,7 @@ const { title, description, category, icon, tags, slug, featured } = Astro.props
   {/* Tags */}
   <div class="flex gap-2 flex-wrap">
     {tags.map((tag) => (
-      <span class="font-mono text-[0.6rem] text-text-tertiary bg-[rgba(255,255,255,0.04)] border border-border px-2.5 py-1 rounded-md transition-colors group-hover:border-border-hover group-hover:text-text-secondary">
+      <span class="font-mono text-[0.6rem] text-text-tertiary bg-[rgba(255,255,255,0.04)] px-2.5 py-1 transition-colors group-hover:text-text-secondary" style="filter: drop-shadow(0 0 0.5px var(--color-border))" data-squircle="6">
         {tag}
       </span>
     ))}

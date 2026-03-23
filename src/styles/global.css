@@ -82,6 +82,43 @@
   50% { opacity: 0.4; }
 }
 
+/* ─── Hero Ambient Drift Keyframes ─── */
+
+@keyframes hero-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(10px, -14px); }
+  50% { transform: translate(-8px, 6px); }
+  75% { transform: translate(14px, 10px); }
+}
+
+@keyframes hero-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-12px, 8px); }
+  50% { transform: translate(6px, -16px); }
+  75% { transform: translate(-10px, 12px); }
+}
+
+@keyframes hero-drift-3 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(8px, 12px); }
+  50% { transform: translate(-14px, -6px); }
+  75% { transform: translate(6px, -10px); }
+}
+
+@keyframes hero-drift-4 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-6px, -10px); }
+  50% { transform: translate(12px, 14px); }
+  75% { transform: translate(-10px, 4px); }
+}
+
+@keyframes hero-drift-5 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(14px, 6px); }
+  50% { transform: translate(-4px, -12px); }
+  75% { transform: translate(-8px, 8px); }
+}
+
 /* ═══════════════════════════════════════════
    CSS Scroll Reveal
    ═══════════════════════════════════════════ */
@@ -163,6 +200,33 @@ body {
 }
 
 /* ═══════════════════════════════════════════
+   Floating Thumbnails (drag-interactive)
+   ═══════════════════════════════════════════ */
+
+/* Grab cursor hint on first visit */
+.floating-thumb-hint {
+  animation: thumb-hint 2s ease-in-out 3s 2;
+}
+
+@keyframes thumb-hint {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(6px); }
+  75% { transform: translateX(-6px); }
+}
+
+/* ═══════════════════════════════════════════
+   Hero Viewport — full-screen unscrollable canvas
+   ═══════════════════════════════════════════ */
+
+.hero-viewport {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════
    Section Wrapper
    ═══════════════════════════════════════════ */
 
@@ -208,6 +272,32 @@ body {
 }
 
 /* ═══════════════════════════════════════════
+   Superellipse (Squircle) — Apple-style
+   continuous corners. clip-path is computed
+   at runtime by src/scripts/squircle.ts
+   (Astro) or useSquircle hook (React).
+   Borders via filter: drop-shadow.
+   ═══════════════════════════════════════════ */
+
+[data-squircle] {
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* Drop-shadow border for squircle elements */
+.sq-border {
+  filter: drop-shadow(0 0 0.5px var(--color-border));
+}
+
+.sq-border-hover {
+  transition: filter 0.3s;
+}
+
+.sq-border-hover:hover {
+  filter: drop-shadow(0 0 0.5px var(--color-border-hover));
+}
+
+/* ═══════════════════════════════════════════
    Buttons
    ═══════════════════════════════════════════ */
 
@@ -219,7 +309,6 @@ body {
   background: linear-gradient(135deg, var(--color-teal), var(--color-cyan));
   border: none;
   padding: 0.8rem 2rem;
-  border-radius: 10px;
   cursor: pointer;
   position: relative;
   transition: transform 0.2s;
@@ -233,7 +322,6 @@ body {
   content: '';
   position: absolute;
   inset: -1px;
-  border-radius: 11px;
   background: linear-gradient(135deg, var(--color-teal), var(--color-cyan));
   filter: blur(12px);
   opacity: 0.4;
@@ -255,20 +343,20 @@ body {
   font-weight: 500;
   color: var(--color-text-primary);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: none;
   padding: 0.8rem 2rem;
-  border-radius: 10px;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition: background 0.2s, filter 0.3s;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  filter: drop-shadow(0 0 0.5px var(--color-border));
 }
 
 .btn-outline:hover {
-  border-color: var(--color-border-hover);
   background: rgba(255, 255, 255, 0.03);
+  filter: drop-shadow(0 0 0.5px var(--color-border-hover));
 }
 
 /* ═══════════════════════════════════════════
@@ -277,19 +365,18 @@ body {
 
 .omnius-card {
   background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
   padding: 2.5rem;
   cursor: pointer;
-  transition: border-color 0.3s, transform 0.3s, background 0.3s;
+  transition: transform 0.3s, background 0.3s, filter 0.3s;
   position: relative;
   overflow: hidden;
+  filter: drop-shadow(0 0 0.5px var(--color-border));
 }
 
 .omnius-card:hover {
-  border-color: var(--color-border-hover);
   transform: translateY(-4px);
   background: var(--color-bg-card-hover);
+  filter: drop-shadow(0 0 0.5px var(--color-border-hover));
 }
 
 /* Gradient corner accent */
@@ -381,18 +468,16 @@ body {
   font-family: var(--font-mono);
   font-size: 0.85em;
   background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
   padding: 0.15em 0.4em;
-  border-radius: 4px;
+  filter: drop-shadow(0 0 0.5px var(--color-border));
 }
 
 .prose pre {
   background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
   padding: 1.2rem;
   overflow-x: auto;
   margin: 1.5rem 0;
+  filter: drop-shadow(0 0 0.5px var(--color-border));
 }
 
 .prose pre code {
@@ -418,8 +503,7 @@ body {
 }
 
 .prose img {
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
+  filter: drop-shadow(0 0 0.5px var(--color-border));
   margin: 1.5rem 0;
 }
 

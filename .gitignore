@@ -1,5 +1,6 @@
 # Claude
 .claude
+.spec-workflow
 
 # Astro
 dist/

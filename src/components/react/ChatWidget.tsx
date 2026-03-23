@@ -66,10 +66,11 @@ export default function ChatWidget() {
       {/* Floating Button */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-teal text-bg border-none cursor-pointer flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-teal text-bg border-none cursor-pointer flex items-center justify-center"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         style={{ boxShadow: "var(--chat-btn-shadow)" }}
+        data-squircle="10"
         aria-label="Toggle chat"
       >
         <AnimatePresence mode="wait">
@@ -105,8 +106,9 @@ export default function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-22 right-6 z-50 w-[380px] max-h-[500px] bg-bg-elevated border border-border rounded-2xl overflow-hidden flex flex-col"
-            style={{ boxShadow: "var(--chat-shadow)" }}
+            className="fixed bottom-22 right-6 z-50 w-[380px] max-h-[500px] bg-bg-elevated overflow-hidden flex flex-col"
+            style={{ boxShadow: "var(--chat-shadow)", filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
+            data-squircle="16"
           >
             {/* Header */}
             <div className="px-5 py-4 border-b border-border flex items-center gap-3">
@@ -138,11 +140,15 @@ export default function ChatWidget() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[80%] px-3.5 py-2.5 rounded-xl text-[0.8rem] leading-relaxed ${
+                    className={`max-w-[80%] px-3.5 py-2.5 text-[0.8rem] leading-relaxed ${
                       msg.role === "user"
-                        ? "bg-teal text-bg rounded-br-sm"
-                        : "bg-bg-card border border-border text-text-secondary rounded-bl-sm"
+                        ? "bg-teal text-bg"
+                        : "bg-bg-card text-text-secondary"
                     }`}
+                    style={{
+                      filter: msg.role === "assistant" ? "drop-shadow(0 0 0.5px var(--color-border))" : undefined,
+                    }}
+                    data-squircle="10"
                   >
                     {msg.content}
                   </div>
@@ -151,7 +157,11 @@ export default function ChatWidget() {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-bg-card border border-border px-4 py-3 rounded-xl rounded-bl-sm">
+                  <div
+                    className="bg-bg-card px-4 py-3"
+                    style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
+                    data-squircle="10"
+                  >
                     <div className="flex gap-1">
                       <span
                         className="w-1.5 h-1.5 rounded-full bg-text-tertiary animate-bounce"
@@ -200,13 +210,16 @@ export default function ChatWidget() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask about our services..."
-                    className="flex-1 bg-bg border border-border rounded-lg px-3.5 py-2 text-[0.8rem] text-text-primary placeholder:text-text-tertiary outline-none focus:border-teal transition-colors"
+                    className="flex-1 bg-bg px-3.5 py-2 text-[0.8rem] text-text-primary placeholder:text-text-tertiary outline-none transition-colors"
+                    style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
+                    data-squircle="8"
                     disabled={isLoading}
                   />
                   <button
                     type="submit"
                     disabled={!input.trim() || isLoading}
-                    className="bg-teal text-bg border-none px-4 py-2 rounded-lg text-[0.8rem] font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-85 transition-opacity"
+                    className="bg-teal text-bg border-none px-4 py-2 text-[0.8rem] font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-85 transition-opacity"
+                    data-squircle="8"
                   >
                     Send
                   </button>

@@ -10,9 +10,11 @@ const { text, dotColor, class: className } = Astro.props;
 
 <div
   class:list={[
-    "inline-flex items-center gap-2 text-[0.75rem] font-medium text-teal bg-teal-glow border border-[rgba(45,212,191,0.2)] px-4 py-1.5 rounded-full",
+    "inline-flex items-center gap-2 text-[0.75rem] font-medium text-teal bg-teal-glow px-4 py-1.5",
     className,
   ]}
+  style="filter: drop-shadow(0 0 0.5px rgba(45,212,191,0.2))"
+  data-squircle="10"
 >
   {dotColor && (
     <span

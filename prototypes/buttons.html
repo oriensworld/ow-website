@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Superellipse vs Border-Radius</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface-hover: #2c2c2e;
+  --blue: #0a84ff;
+  --blue-hover: #409cff;
+  --gray-fill: #48484a;
+  --gray-fill-hover: #636366;
+  --text: #fff;
+  --text-secondary: #98989d;
+  --text-tertiary: #636366;
+  --green: #30d158;
+  --red: #ff453a;
+  --font: -apple-system, 'SF Pro Display', 'Instrument Sans', sans-serif;
+  --mono: 'Fira Code', ui-monospace, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  padding: 3rem 2rem 6rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+.header h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.5rem;
+}
+.header p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  max-width: 900px;
+  margin: 0 auto 4rem;
+}
+
+.panel {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  position: relative;
+}
+.panel.squircle {
+  border-radius: 0;
+}
+
+.panel-tag {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+}
+.panel-tag.br { color: var(--red); background: rgba(255,69,58,0.12); }
+.panel-tag.sq { color: var(--green); background: rgba(48,209,88,0.12); }
+
+.btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  align-items: center;
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 0.25rem;
+}
+
+/* ── Button base ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.4rem;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.15s, opacity 0.2s;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+.btn:active { transform: scale(0.96); }
+
+/* Filled (blue) */
+.btn.filled {
+  background: var(--blue);
+  color: #fff;
+}
+.btn.filled:hover { background: var(--blue-hover); }
+
+/* Tinted */
+.btn.tinted {
+  background: rgba(10, 132, 255, 0.15);
+  color: var(--blue);
+}
+.btn.tinted:hover { background: rgba(10, 132, 255, 0.25); }
+
+/* Gray */
+.btn.gray {
+  background: var(--gray-fill);
+  color: #fff;
+}
+.btn.gray:hover { background: var(--gray-fill-hover); }
+
+/* Large */
+.btn.large {
+  padding: 0.85rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* Pill */
+.btn.pill {
+  padding: 0.5rem 1.6rem;
+  font-size: 0.85rem;
+}
+
+/* border-radius variants */
+.br-12 { border-radius: 12px; }
+.br-16 { border-radius: 16px; }
+.br-20 { border-radius: 20px; }
+.br-pill { border-radius: 999px; }
+
+/* Card box */
+.card-box {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--blue), #5e5ce6);
+}
+.card-box.br-20 { border-radius: 20px; }
+
+/* ── Overlay guide lines (corner highlight) ── */
+.panel { overflow: visible; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Superellipse Buttons</h1>
+  <p>Side-by-side comparison of CSS border-radius (circular arc) vs superellipse (continuous curvature, n=5). Hover to interact.</p>
+</div>
+
+<div class="comparison">
+  <!-- LEFT: border-radius -->
+  <div class="panel">
+    <span class="panel-tag br">border-radius</span>
+
+    <div class="btn-row">
+      <span class="label">Filled / Primary</span>
+      <button class="btn filled br-12">Get Started</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Tinted / Secondary</span>
+      <button class="btn tinted br-12">Learn More</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Gray / Tertiary</span>
+      <button class="btn gray br-12">Cancel</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Large / Hero</span>
+      <button class="btn filled large br-16">Buy iPhone 17 Pro</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Pill</span>
+      <button class="btn filled pill br-pill">Subscribe</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Card (80×80)</span>
+      <div class="card-box br-20"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: superellipse -->
+  <div class="panel squircle" data-squircle="20">
+    <span class="panel-tag sq" data-squircle="6">superellipse</span>
+
+    <div class="btn-row">
+      <span class="label">Filled / Primary</span>
+      <button class="btn filled" data-squircle="12">Get Started</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Tinted / Secondary</span>
+      <button class="btn tinted" data-squircle="12">Learn More</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Gray / Tertiary</span>
+      <button class="btn gray" data-squircle="12">Cancel</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Large / Hero</span>
+      <button class="btn filled large" data-squircle="16">Buy iPhone 17 Pro</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Pill</span>
+      <button class="btn filled pill" data-squircle="999">Subscribe</button>
+    </div>
+    <div class="btn-row">
+      <span class="label">Card (80×80)</span>
+      <div class="card-box" data-squircle="20"></div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;max-width:600px;margin:0 auto;">
+  <p class="label" style="margin-bottom:1rem;">How to see the difference</p>
+  <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.6;">
+    Look at the corners of the cards and buttons. With <span style="color:var(--red)">border-radius</span>,
+    the straight edge abruptly transitions into a circular arc. With <span style="color:var(--green)">superellipse</span>,
+    the edge gradually eases into the curve — the corner "hugs" the straight edge longer before rounding.
+    The difference is most visible on the 80×80 card and the large button.
+  </p>
+</div>
+
+<script>
+// Superellipse clip-path — n=5, 48 pts/corner for silk-smooth curves
+const N=5, S=48;
+function cp(w, h, radius) {
+  const r = Math.min(radius, w/2, h/2), exp = 2/N, pts = [];
+  if (r <= 0 || w <= 0 || h <= 0) return "none";
+  function add(x, y) {
+    pts.push(((x/w)*100).toFixed(3) + "% " + ((y/h)*100).toFixed(3) + "%");
+  }
+  function corner(cx, cy, sa, ea) {
+    for (let i = 0; i <= S; i++) {
+      const t = sa + (ea - sa) * (i / S);
+      const c = Math.cos(t), s = Math.sin(t);
+      add(
+        cx + r * Math.sign(c) * Math.pow(Math.abs(c), exp),
+        cy - r * Math.sign(s) * Math.pow(Math.abs(s), exp)
+      );
+    }
+  }
+  add(r, 0); add(w - r, 0);
+  corner(w - r, r, Math.PI/2, 0);
+  add(w, h - r);
+  corner(w - r, h - r, 0, -Math.PI/2);
+  add(r, h);
+  corner(r, h - r, -Math.PI/2, -Math.PI);
+  add(0, r);
+  corner(r, r, Math.PI, Math.PI/2);
+  return "polygon(" + pts.join(",") + ")";
+}
+function sq(el) {
+  const radius = parseInt(el.dataset.squircle || "16", 10);
+  const { width: w, height: h } = el.getBoundingClientRect();
+  if (w > 0 && h > 0) el.style.clipPath = cp(w, h, radius);
+}
+document.querySelectorAll("[data-squircle]").forEach(sq);
+const ro = new ResizeObserver(es => {
+  for (const e of es) if (e.target.dataset?.squircle) sq(e.target);
+});
+document.querySelectorAll("[data-squircle]").forEach(el => ro.observe(el));
+</script>
+
+</body>
+</html>
