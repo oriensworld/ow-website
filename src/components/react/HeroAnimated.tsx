@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { motion, useMotionValue } from "motion/react";
 
 // ════════════════════════════════════════════════════════════════════
@@ -17,6 +17,26 @@ interface Props {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// Seeded random — deterministic per seed+index for stable layouts
+// ════════════════════════════════════════════════════════════════════
+
+function seededRandom(seed: number, index: number): () => number {
+  let s = (seed * 9301 + 49297 + index * 233) % 233280;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+function randomPos(seed: number, index: number): React.CSSProperties {
+  const rand = seededRandom(seed, index);
+  return {
+    top: `${2 + rand() * 90}%`,
+    left: `${2 + rand() * 88}%`,
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════
 // Floater — generic draggable wrapper with ambient drift
 // ════════════════════════════════════════════════════════════════════
 
@@ -27,7 +47,6 @@ function Floater({
   delay = 0,
   drift = 1,
   href,
-  mobileVisible = false,
 }: {
   children: React.ReactNode;
   constraintRef: React.RefObject<HTMLDivElement | null>;
@@ -35,7 +54,6 @@ function Floater({
   delay?: number;
   drift?: number;
   href?: string;
-  mobileVisible?: boolean;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragX = useMotionValue(0);
@@ -45,10 +63,11 @@ function Floater({
   };
 
   return (
-    <div
-      className={`absolute z-10 ${mobileVisible ? "" : "hidden lg:block"}`}
+    <motion.div
+      className="absolute z-10"
+      animate={pos}
+      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
       style={{
-        ...pos,
         animation: `hero-drift-${drift} ${16 + drift * 4}s ease-in-out infinite`,
       }}
     >
@@ -77,7 +96,7 @@ function Floater({
       >
         {children}
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -116,7 +135,7 @@ function ImageThumb({
   const dims = size === "md" ? "w-[280px] h-[168px]" : "w-[220px] h-[132px]";
   return (
     <div
-      className={`${dims} overflow-hidden opacity-35 hover:opacity-70 transition-opacity duration-300`}
+      className={`${dims} overflow-hidden opacity-90 hover:opacity-100 transition-opacity duration-300`}
       style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
       data-squircle="8"
     >
@@ -130,13 +149,12 @@ function ImageThumb({
   );
 }
 
-
-/** Dot grid — 3x3 arrangement */
+/** Dot grid — 5x5 arrangement */
 function DotGrid() {
   return (
     <div className="grid grid-cols-5 gap-3">
       {Array.from({ length: 25 }).map((_, i) => (
-        <div key={i} className="w-2 h-2 rounded-full bg-text-tertiary/15" />
+        <div key={i} className="w-2 h-2 rounded-full bg-text-tertiary/90" />
       ))}
     </div>
   );
@@ -146,11 +164,155 @@ function DotGrid() {
 function Crosshair() {
   return (
     <div className="relative w-12 h-12">
-      <div className="absolute top-1/2 left-0 w-full h-px bg-teal/15 -translate-y-1/2" />
-      <div className="absolute top-0 left-1/2 w-px h-full bg-teal/15 -translate-x-1/2" />
+      <div className="absolute top-1/2 left-0 w-full h-px bg-teal/90 -translate-y-1/2" />
+      <div className="absolute top-0 left-1/2 w-px h-full bg-teal/90 -translate-x-1/2" />
     </div>
   );
 }
+
+// ════════════════════════════════════════════════════════════════════
+// Floater config types
+// ════════════════════════════════════════════════════════════════════
+
+type FloaterType =
+  | { kind: "chip"; projectIndex: number }
+  | { kind: "image"; src: string; size: "sm" | "md" }
+  | { kind: "symbol"; char: string; color: string; size: string }
+  | { kind: "circle"; size: string; color: string }
+  | { kind: "dotgrid" }
+  | { kind: "crosshair" }
+  | { kind: "line"; width: string; color: string }
+  | { kind: "bracket"; corner: "tl" | "tr" | "bl" | "br" };
+
+interface FloaterConfig {
+  type: FloaterType;
+  delay: number;
+  drift: number;
+  mobileVisible?: boolean; // kept for type compat but unused
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Static floater definitions
+// ════════════════════════════════════════════════════════════════════
+
+const IMAGES = [
+  "/images/placeholder-1.svg",
+  "/images/placeholder-2.svg",
+  "/images/placeholder-3.svg",
+  "/images/placeholder-5.svg",
+];
+
+const SYMBOLS: { char: string; color: string; size: string }[] = [
+  { char: "✦", color: "text-teal/90", size: "text-7xl" },
+  { char: "✦", color: "text-cyan/90", size: "text-6xl" },
+  { char: "◇", color: "text-violet/90", size: "text-5xl" },
+  { char: "✦", color: "text-teal/90", size: "text-7xl" },
+  { char: "◇", color: "text-cyan/90", size: "text-6xl" },
+  { char: "✦", color: "text-violet/90", size: "text-5xl" },
+  { char: "◇", color: "text-pink/90", size: "text-6xl" },
+  { char: "✦", color: "text-teal/90", size: "text-5xl" },
+  { char: "✦", color: "text-cyan/90", size: "text-7xl" },
+  { char: "✦", color: "text-teal/90", size: "text-8xl" },
+  { char: "◇", color: "text-cyan/90", size: "text-7xl" },
+  { char: "✦", color: "text-violet/90", size: "text-6xl" },
+  { char: "◇", color: "text-pink/90", size: "text-7xl" },
+  { char: "✦", color: "text-teal/90", size: "text-6xl" },
+  { char: "◇", color: "text-cyan/90", size: "text-8xl" },
+  { char: "✦", color: "text-violet/90", size: "text-7xl" },
+  { char: "◇", color: "text-pink/90", size: "text-5xl" },
+  { char: "✦", color: "text-teal/90", size: "text-6xl" },
+  { char: "✦", color: "text-cyan/90", size: "text-7xl" },
+  { char: "✦", color: "text-teal/90", size: "text-6xl" },
+  { char: "◇", color: "text-cyan/90", size: "text-8xl" },
+  { char: "✦", color: "text-violet/90", size: "text-7xl" },
+  { char: "✦", color: "text-pink/90", size: "text-6xl" },
+  { char: "◇", color: "text-teal/90", size: "text-7xl" },
+  { char: "✦", color: "text-cyan/90", size: "text-5xl" },
+  { char: "◇", color: "text-violet/90", size: "text-8xl" },
+  { char: "✦", color: "text-pink/90", size: "text-6xl" },
+];
+
+function buildFloaterConfigs(): FloaterConfig[] {
+  const configs: FloaterConfig[] = [];
+  let d = 0;
+  const nextDelay = () => { d = (d + 0.3) % 2; return d; };
+  const nextDrift = (i: number) => (i % 5) + 1;
+
+  // Project chips — 20 instances (reuse indices 0-11)
+  for (let i = 0; i < 20; i++) {
+    configs.push({ type: { kind: "chip", projectIndex: i % 12 }, delay: nextDelay(), drift: nextDrift(i) });
+  }
+
+  // Image thumbnails — 18 instances
+  for (let i = 0; i < 18; i++) {
+    configs.push({
+      type: { kind: "image", src: IMAGES[i % IMAGES.length], size: i % 3 === 0 ? "md" : "sm" },
+      delay: nextDelay(), drift: nextDrift(i),
+    });
+  }
+
+  // Symbols — all from SYMBOLS array
+  for (let i = 0; i < SYMBOLS.length; i++) {
+    configs.push({
+      type: { kind: "symbol", ...SYMBOLS[i] },
+      delay: nextDelay(), drift: nextDrift(i),
+    });
+  }
+
+  // Circles — 8
+  const circleColors = ["border-teal/90", "border-cyan/90", "border-violet/90", "border-pink/90"];
+  const circleSizes = ["w-20 h-20", "w-24 h-24", "w-28 h-28", "w-32 h-32", "w-16 h-16"];
+  for (let i = 0; i < 8; i++) {
+    configs.push({
+      type: { kind: "circle", size: circleSizes[i % circleSizes.length], color: circleColors[i % circleColors.length] },
+      delay: nextDelay(), drift: nextDrift(i),
+    });
+  }
+
+  // Dot grids — 7
+  for (let i = 0; i < 7; i++) {
+    configs.push({ type: { kind: "dotgrid" }, delay: nextDelay(), drift: nextDrift(i) });
+  }
+
+  // Crosshairs — 6
+  for (let i = 0; i < 6; i++) {
+    configs.push({ type: { kind: "crosshair" }, delay: nextDelay(), drift: nextDrift(i) });
+  }
+
+  // Gradient lines — 8
+  const lineColors = ["via-teal/90", "via-cyan/90", "via-violet/90", "via-border/90"];
+  const lineWidths = ["w-36", "w-40", "w-44", "w-48", "w-50"];
+  for (let i = 0; i < 8; i++) {
+    configs.push({
+      type: { kind: "line", width: lineWidths[i % lineWidths.length], color: lineColors[i % lineColors.length] },
+      delay: nextDelay(), drift: nextDrift(i),
+    });
+  }
+
+  // Corner brackets — 4 (fixed positions, not randomized)
+  configs.push({ type: { kind: "bracket", corner: "tl" }, delay: 0.1, drift: 2, mobileVisible: true });
+  configs.push({ type: { kind: "bracket", corner: "tr" }, delay: 0.15, drift: 3, mobileVisible: true });
+  configs.push({ type: { kind: "bracket", corner: "bl" }, delay: 0.2, drift: 4, mobileVisible: true });
+  configs.push({ type: { kind: "bracket", corner: "br" }, delay: 0.25, drift: 5, mobileVisible: true });
+
+  return configs;
+}
+
+const FLOATER_CONFIGS = buildFloaterConfigs();
+
+const BRACKET_POSITIONS: Record<string, React.CSSProperties> = {
+  tl: { top: "2%", left: "1%" },
+  tr: { top: "2%", right: "1%" },
+  bl: { bottom: "2%", left: "1%" },
+  br: { bottom: "2%", right: "1%" },
+};
+
+const BRACKET_CLASSES: Record<string, string> = {
+  tl: "w-14 h-14 border-l border-t border-border/90",
+  tr: "w-14 h-14 border-r border-t border-border/90",
+  bl: "w-14 h-14 border-l border-b border-border/90",
+  br: "w-14 h-14 border-r border-b border-border/90",
+};
 
 // ════════════════════════════════════════════════════════════════════
 // Main Hero Component
@@ -159,341 +321,81 @@ function Crosshair() {
 export default function HeroAnimated({ projects = [] }: Props) {
   const constraintRef = useRef<HTMLDivElement>(null);
   const p = projects.slice(0, 12);
+  const [seed, setSeed] = useState(42);
+
+  // Listen for shuffle event from Navbar
+  useEffect(() => {
+    const handler = () => setSeed((s) => s + 1);
+    window.addEventListener("hero-shuffle", handler);
+    return () => window.removeEventListener("hero-shuffle", handler);
+  }, []);
+
+  const randomize = useCallback(() => setSeed((s) => s + 1), []);
+
+  // Compute positions for all floaters
+  const positions = useMemo(() => {
+    return FLOATER_CONFIGS.map((config, i) => {
+      if (config.type.kind === "bracket") {
+        return BRACKET_POSITIONS[config.type.corner];
+      }
+      return randomPos(seed, i);
+    });
+  }, [seed]);
+
+  // Render a floater's content
+  const renderContent = (config: FloaterConfig) => {
+    const { type } = config;
+    switch (type.kind) {
+      case "chip": {
+        const project = p[type.projectIndex];
+        return project ? <ProjectChip project={project} /> : null;
+      }
+      case "image":
+        return <ImageThumb src={type.src} size={type.size} />;
+      case "symbol":
+        return <span className={`${type.color} ${type.size}`}>{type.char}</span>;
+      case "circle":
+        return <div className={`${type.size} rounded-full border ${type.color}`} />;
+      case "dotgrid":
+        return <DotGrid />;
+      case "crosshair":
+        return <Crosshair />;
+      case "line":
+        return <div className={`${type.width} h-px bg-gradient-to-r from-transparent ${type.color} to-transparent`} />;
+      case "bracket":
+        return <div className={BRACKET_CLASSES[type.corner]} />;
+    }
+  };
 
   return (
     <div
       ref={constraintRef}
       className="relative w-full h-dvh overflow-hidden"
     >
-      {/* ─── Floating Project Cards ─────────────────────────────── */}
-      {p[0] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "6%", left: "3%" }} delay={0.3} drift={1} href={`/projects/${p[0].slug}`}>
-          <ProjectChip project={p[0]} />
-        </Floater>
-      )}
-      {p[1] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "14%", right: "5%" }} delay={0.7} drift={2} href={`/projects/${p[1].slug}`}>
-          <ProjectChip project={p[1]} />
-        </Floater>
-      )}
-      {p[2] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "50%", left: "1%" }} delay={1.1} drift={3} href={`/projects/${p[2].slug}`}>
-          <ProjectChip project={p[2]} />
-        </Floater>
-      )}
-      {p[3] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "56%", right: "2%" }} delay={0.5} drift={4} href={`/projects/${p[3].slug}`}>
-          <ProjectChip project={p[3]} />
-        </Floater>
-      )}
-      {p[4] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "82%", left: "5%" }} delay={0.9} drift={5} href={`/projects/${p[4].slug}`}>
-          <ProjectChip project={p[4]} />
-        </Floater>
-      )}
-      {p[5] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "80%", right: "7%" }} delay={1.5} drift={1} href={`/projects/${p[5].slug}`}>
-          <ProjectChip project={p[5]} />
-        </Floater>
-      )}
-
-      {/* ─── Floating Image Thumbnails ──────────────────────────── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "22%", left: "5%" }} delay={0.5} drift={4}>
-        <ImageThumb src="/images/placeholder-1.svg" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "68%", right: "4%" }} delay={1.3} drift={2}>
-        <ImageThumb src="/images/placeholder-3.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "32%", right: "6%" }} delay={0.9} drift={5}>
-        <ImageThumb src="/images/placeholder-5.svg" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "75%", left: "18%" }} delay={1.7} drift={3}>
-        <ImageThumb src="/images/placeholder-2.svg" />
-      </Floater>
-
-      {/* ─── Floating Symbols ───────────────────────────────────── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "20%", left: "20%" }} delay={0.4} drift={2}>
-        <span className="text-teal/20 text-7xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "72%", right: "18%" }} delay={1.6} drift={4}>
-        <span className="text-cyan/20 text-6xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "16%", left: "50%" }} delay={0.3} drift={5}>
-        <span className="text-violet/15 text-5xl">◇</span>
-      </Floater>
-
-      {/* ─── Decorative Shapes ──────────────────────────────────── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "13%", left: "56%" }} delay={0.4} drift={3}>
-        <div className="w-20 h-20 rounded-full border border-teal/10" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "74%", left: "40%" }} delay={1.0} drift={1}>
-        <DotGrid />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "46%", right: "14%" }} delay={0.7} drift={5}>
-        <Crosshair />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "35%", left: "36%" }} delay={1.2} drift={2}>
-        <div className="w-40 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "60%", left: "55%" }} delay={0.8} drift={4}>
-        <div className="w-36 h-px bg-gradient-to-r from-transparent via-teal/15 to-transparent" />
-      </Floater>
-
-      {/* ─── Additional Project Cards (center area) ────────────── */}
-      {p[6] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "30%", left: "15%" }} delay={0.4} drift={2} href={`/projects/${p[6].slug}`}>
-          <ProjectChip project={p[6]} />
-        </Floater>
-      )}
-      {p[7] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "38%", right: "12%" }} delay={0.8} drift={4} href={`/projects/${p[7].slug}`}>
-          <ProjectChip project={p[7]} />
-        </Floater>
-      )}
-      {p[8] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "48%", left: "25%" }} delay={1.0} drift={3} href={`/projects/${p[8].slug}`}>
-          <ProjectChip project={p[8]} />
-        </Floater>
-      )}
-      {p[9] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "44%", right: "22%" }} delay={0.6} drift={1} href={`/projects/${p[9].slug}`}>
-          <ProjectChip project={p[9]} />
-        </Floater>
-      )}
-      {p[10] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "60%", left: "10%" }} delay={1.3} drift={5} href={`/projects/${p[10].slug}`}>
-          <ProjectChip project={p[10]} />
-        </Floater>
-      )}
-      {p[11] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "64%", right: "8%" }} delay={0.9} drift={2} href={`/projects/${p[11].slug}`}>
-          <ProjectChip project={p[11]} />
-        </Floater>
-      )}
-
-      {/* ─── Additional Image Thumbnails (covering center) ───── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "28%", left: "30%" }} delay={0.6} drift={3}>
-        <ImageThumb src="/images/placeholder-1.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "40%", right: "25%" }} delay={1.1} drift={1}>
-        <ImageThumb src="/images/placeholder-2.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "55%", left: "35%" }} delay={0.8} drift={4}>
-        <ImageThumb src="/images/placeholder-3.svg" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "52%", right: "30%" }} delay={1.4} drift={2}>
-        <ImageThumb src="/images/placeholder-5.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "18%", left: "40%" }} delay={0.3} drift={5}>
-        <ImageThumb src="/images/placeholder-2.svg" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "65%", left: "45%" }} delay={1.6} drift={3}>
-        <ImageThumb src="/images/placeholder-1.svg" size="md" />
-      </Floater>
-
-      {/* ─── Additional Symbols (scattered over text) ─────────── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "35%", left: "45%" }} delay={0.5} drift={3}>
-        <span className="text-teal/25 text-7xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "48%", right: "35%" }} delay={0.7} drift={1}>
-        <span className="text-cyan/25 text-6xl">◇</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "30%", left: "55%" }} delay={1.0} drift={4}>
-        <span className="text-violet/20 text-5xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "58%", left: "28%" }} delay={1.3} drift={2}>
-        <span className="text-pink/20 text-6xl">◇</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "42%", left: "60%" }} delay={0.9} drift={5}>
-        <span className="text-teal/30 text-5xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "55%", right: "40%" }} delay={1.5} drift={3}>
-        <span className="text-cyan/20 text-7xl">✦</span>
-      </Floater>
-
-      {/* ─── Additional Decorative Shapes (center coverage) ──── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "25%", left: "42%" }} delay={0.3} drift={2}>
-        <div className="w-24 h-24 rounded-full border border-cyan/10" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "50%", left: "50%" }} delay={0.7} drift={4}>
-        <DotGrid />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "38%", left: "32%" }} delay={1.1} drift={1}>
-        <Crosshair />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "62%", right: "35%" }} delay={0.5} drift={3}>
-        <Crosshair />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "45%", left: "20%" }} delay={0.8} drift={5}>
-        <div className="w-44 h-px bg-gradient-to-r from-transparent via-teal/20 to-transparent" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "40%", right: "20%" }} delay={1.2} drift={2}>
-        <div className="w-44 h-px bg-gradient-to-r from-transparent via-cyan/15 to-transparent" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "55%", left: "42%" }} delay={0.6} drift={4}>
-        <div className="w-36 h-px bg-gradient-to-r from-transparent via-violet/15 to-transparent" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "32%", right: "38%" }} delay={1.4} drift={1}>
-        <DotGrid />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "60%", left: "60%" }} delay={0.9} drift={3}>
-        <div className="w-18 h-18 rounded-full border border-violet/10" />
-      </Floater>
-
-      {/* ─── Extra Project Cards (fill remaining gaps) ────────── */}
-      {p[0] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "24%", left: "38%" }} delay={0.2} drift={3} href={`/projects/${p[0].slug}`}>
-          <ProjectChip project={p[0]} />
-        </Floater>
-      )}
-      {p[1] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "42%", left: "42%" }} delay={0.6} drift={1} href={`/projects/${p[1].slug}`}>
-          <ProjectChip project={p[1]} />
-        </Floater>
-      )}
-      {p[2] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "55%", right: "15%" }} delay={1.0} drift={4} href={`/projects/${p[2].slug}`}>
-          <ProjectChip project={p[2]} />
-        </Floater>
-      )}
-      {p[3] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "70%", left: "30%" }} delay={0.4} drift={2} href={`/projects/${p[3].slug}`}>
-          <ProjectChip project={p[3]} />
-        </Floater>
-      )}
-      {p[4] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "18%", right: "20%" }} delay={0.8} drift={5} href={`/projects/${p[4].slug}`}>
-          <ProjectChip project={p[4]} />
-        </Floater>
-      )}
-      {p[5] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "36%", left: "8%" }} delay={1.2} drift={3} href={`/projects/${p[5].slug}`}>
-          <ProjectChip project={p[5]} />
-        </Floater>
-      )}
-      {p[6] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "72%", right: "25%" }} delay={0.3} drift={1} href={`/projects/${p[6].slug}`}>
-          <ProjectChip project={p[6]} />
-        </Floater>
-      )}
-      {p[7] && (
-        <Floater constraintRef={constraintRef} pos={{ top: "10%", left: "45%" }} delay={0.9} drift={4} href={`/projects/${p[7].slug}`}>
-          <ProjectChip project={p[7]} />
-        </Floater>
-      )}
-
-      {/* ─── Extra Image Thumbnails ──────────────────────────── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "8%", left: "15%" }} delay={0.3} drift={2}>
-        <ImageThumb src="/images/placeholder-1.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "35%", right: "3%" }} delay={0.7} drift={5}>
-        <ImageThumb src="/images/placeholder-2.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "48%", left: "5%" }} delay={1.1} drift={3}>
-        <ImageThumb src="/images/placeholder-3.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "78%", right: "35%" }} delay={0.5} drift={1}>
-        <ImageThumb src="/images/placeholder-5.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "62%", left: "22%" }} delay={1.4} drift={4}>
-        <ImageThumb src="/images/placeholder-2.svg" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "25%", right: "15%" }} delay={0.8} drift={2}>
-        <ImageThumb src="/images/placeholder-1.svg" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "85%", left: "40%" }} delay={1.0} drift={5}>
-        <ImageThumb src="/images/placeholder-3.svg" size="md" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "44%", left: "52%" }} delay={0.4} drift={3}>
-        <ImageThumb src="/images/placeholder-5.svg" />
-      </Floater>
-
-      {/* ─── Extra Symbols ───────────────────────────────────── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "8%", left: "60%" }} delay={0.2} drift={4}>
-        <span className="text-teal/20 text-8xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "45%", right: "8%" }} delay={0.6} drift={2}>
-        <span className="text-cyan/20 text-7xl">◇</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "68%", left: "12%" }} delay={1.0} drift={5}>
-        <span className="text-violet/15 text-6xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "25%", left: "8%" }} delay={0.8} drift={1}>
-        <span className="text-pink/20 text-7xl">◇</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "80%", right: "12%" }} delay={1.3} drift={3}>
-        <span className="text-teal/25 text-6xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "50%", left: "65%" }} delay={0.4} drift={4}>
-        <span className="text-cyan/15 text-8xl">◇</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "38%", left: "25%" }} delay={1.5} drift={2}>
-        <span className="text-violet/20 text-7xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "65%", right: "45%" }} delay={0.7} drift={5}>
-        <span className="text-pink/15 text-5xl">◇</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "15%", right: "40%" }} delay={1.1} drift={1}>
-        <span className="text-teal/20 text-6xl">✦</span>
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "88%", left: "20%" }} delay={0.5} drift={3}>
-        <span className="text-cyan/25 text-7xl">✦</span>
-      </Floater>
-
-      {/* ─── Extra Decorative Shapes ─────────────────────────── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "5%", right: "10%" }} delay={0.3} drift={4}>
-        <div className="w-28 h-28 rounded-full border border-teal/8" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "40%", left: "48%" }} delay={0.9} drift={2}>
-        <div className="w-20 h-20 rounded-full border border-cyan/8" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "70%", right: "5%" }} delay={1.3} drift={5}>
-        <div className="w-24 h-24 rounded-full border border-violet/8" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "15%", left: "30%" }} delay={0.6} drift={1}>
-        <DotGrid />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "58%", right: "20%" }} delay={1.0} drift={3}>
-        <DotGrid />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "82%", left: "55%" }} delay={0.4} drift={4}>
-        <Crosshair />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "28%", right: "30%" }} delay={0.8} drift={2}>
-        <Crosshair />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "48%", left: "15%" }} delay={1.2} drift={5}>
-        <div className="w-48 h-px bg-gradient-to-r from-transparent via-teal/15 to-transparent" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "72%", left: "50%" }} delay={0.5} drift={1}>
-        <div className="w-44 h-px bg-gradient-to-r from-transparent via-cyan/12 to-transparent" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "20%", right: "8%" }} delay={1.4} drift={3}>
-        <div className="w-36 h-px bg-gradient-to-r from-transparent via-violet/12 to-transparent" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "90%", right: "15%" }} delay={0.7} drift={4}>
-        <DotGrid />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "3%", left: "42%" }} delay={1.1} drift={2}>
-        <div className="w-16 h-16 rounded-full border border-pink/8" />
-      </Floater>
-
-      {/* ─── Corner Brackets (decorative framing) ───────────────── */}
-      <Floater constraintRef={constraintRef} pos={{ top: "2%", left: "1%" }} delay={0.1} drift={2} mobileVisible>
-        <div className="w-14 h-14 border-l border-t border-border/30" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ top: "2%", right: "1%" }} delay={0.15} drift={3} mobileVisible>
-        <div className="w-14 h-14 border-r border-t border-border/30" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ bottom: "2%", left: "1%" }} delay={0.2} drift={4} mobileVisible>
-        <div className="w-14 h-14 border-l border-b border-border/30" />
-      </Floater>
-      <Floater constraintRef={constraintRef} pos={{ bottom: "2%", right: "1%" }} delay={0.25} drift={5} mobileVisible>
-        <div className="w-14 h-14 border-r border-b border-border/30" />
-      </Floater>
+      {/* ─── All Floating Objects ──────────────────────────────── */}
+      {FLOATER_CONFIGS.map((config, i) => {
+        const content = renderContent(config);
+        if (!content) return null;
+        return (
+          <Floater
+            key={i}
+            constraintRef={constraintRef}
+            pos={positions[i]}
+            delay={config.delay}
+            drift={config.drift}
+            href={
+              config.type.kind === "chip" && p[config.type.projectIndex]
+                ? `/projects/${p[config.type.projectIndex].slug}`
+                : undefined
+            }
+          >
+            {content}
+          </Floater>
+        );
+      })}
 
       {/* ═══════════════════════════════════════════════════════════
-           Center Content — non-draggable, layered above floaters
+           Center Content — non-draggable, layered behind floaters
          ═══════════════════════════════════════════════════════════ */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
         {/* Chip Badge */}
