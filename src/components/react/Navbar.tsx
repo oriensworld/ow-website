@@ -121,12 +121,12 @@ export default function Navbar() {
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   const bgClass = scrolled
-    ? "bg-[rgba(6,8,15,0.85)] backdrop-blur-2xl backdrop-saturate-[180%] shadow-[0_4px_24px_rgba(0,0,0,0.3)]"
-    : "bg-[rgba(6,8,15,0.5)] backdrop-blur-xl";
+    ? "bg-[rgba(5,5,5,0.85)] backdrop-blur-2xl backdrop-saturate-[180%] shadow-[0_4px_24px_rgba(0,0,0,0.3)]"
+    : "bg-[rgba(5,5,5,0.5)] backdrop-blur-xl";
 
   const filterStyle = scrolled
-    ? "drop-shadow(0 0 0.5px rgba(30,41,59,0.8))"
-    : "drop-shadow(0 0 0.5px rgba(30,41,59,0.5))";
+    ? "drop-shadow(0 0 0.5px rgba(34,34,34,0.8))"
+    : "drop-shadow(0 0 0.5px rgba(34,34,34,0.5))";
 
   return (
     <>
@@ -145,17 +145,17 @@ export default function Navbar() {
           <AnimatePresence mode="wait">
             {!expanded ? (
               /* ── Idle state: compact pill button ── */
-              <motion.button
+              <motion.div
                 key="idle"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                onClick={() => setExpanded(true)}
-                className="flex items-center gap-3 px-6 py-3 bg-transparent border-none cursor-pointer group"
+                className="flex items-center"
+                onMouseEnter={() => setExpanded(true)}
               >
-                {/* Animated bars icon */}
-                <div className="flex flex-col gap-[5px]">
+                {/* Bars icon */}
+                <div className="flex flex-col gap-[5px] pl-6 py-3">
                   <motion.span
                     className="block w-4 h-[1.5px] bg-teal origin-left"
                     initial={false}
@@ -172,10 +172,14 @@ export default function Navbar() {
                     animate={{ width: 8 }}
                   />
                 </div>
-                <span className="text-[0.85rem] font-bold text-text-primary tracking-tight group-hover:text-teal transition-colors duration-200">
+                {/* Logo — navigates home */}
+                <a
+                  href="/"
+                  className="text-[0.85rem] font-bold text-text-primary no-underline tracking-tight hover:text-teal transition-colors duration-200 pl-3 pr-6 py-3"
+                >
                   nap of the earth
-                </span>
-              </motion.button>
+                </a>
+              </motion.div>
             ) : (
               /* ── Expanded state: full navigation ── */
               <motion.div
@@ -184,21 +188,21 @@ export default function Navbar() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, delay: 0.1 }}
-                className="flex items-center gap-6 px-6 py-2.5"
+                className="flex items-center gap-3 px-5 py-2"
               >
-                {/* Logo — click to collapse */}
-                <button
-                  onClick={() => setExpanded(false)}
-                  className="text-[0.9rem] font-bold text-text-primary tracking-tight bg-transparent border-none cursor-pointer hover:text-teal transition-colors duration-200 whitespace-nowrap"
+                {/* Logo — click to go home */}
+                <a
+                  href="/"
+                  className="text-[0.8rem] font-bold text-text-primary tracking-tight no-underline hover:text-teal transition-colors duration-200 whitespace-nowrap"
                 >
                   nap of the earth
-                </button>
+                </a>
 
                 {/* Separator */}
-                <div className="w-px h-4 bg-border/40" />
+                <div className="w-px h-3.5 bg-border/40" />
 
                 {/* Nav Links */}
-                <ul className="flex gap-1 list-none m-0 p-0">
+                <ul className="flex gap-0.5 list-none m-0 p-0">
                   {NAV_ITEMS.map((item, i) => (
                     <motion.li
                       key={item.href}
@@ -216,8 +220,8 @@ export default function Navbar() {
                           ? { target: "_blank", rel: "noopener noreferrer" }
                           : {})}
                         onClick={(e) => handleNavClick(e, item)}
-                        className="text-[0.78rem] text-text-secondary no-underline px-3 py-1.5 hover:text-text-primary hover:bg-[rgba(255,255,255,0.05)] transition-colors"
-                        data-squircle="8"
+                        className="text-[0.72rem] text-text-secondary no-underline px-2 py-1 hover:text-text-primary hover:bg-[rgba(255,255,255,0.05)] transition-colors"
+                        data-squircle="6"
                       >
                         {item.label}
                       </a>
@@ -226,7 +230,7 @@ export default function Navbar() {
                 </ul>
 
                 {/* Separator */}
-                <div className="w-px h-4 bg-border/40" />
+                <div className="w-px h-3.5 bg-border/40" />
 
                 {/* CTA Button */}
                 <motion.a
@@ -242,8 +246,8 @@ export default function Navbar() {
                         ?.scrollIntoView({ behavior: "smooth" });
                     }
                   }}
-                  className="text-[0.78rem] font-medium text-bg bg-teal no-underline px-5 py-1.5 hover:opacity-85 transition-opacity whitespace-nowrap"
-                  data-squircle="8"
+                  className="text-[0.72rem] font-medium text-bg bg-teal no-underline px-4 py-1 hover:opacity-85 transition-opacity whitespace-nowrap"
+                  data-squircle="6"
                 >
                   Contact
                 </motion.a>
@@ -256,12 +260,28 @@ export default function Navbar() {
                   onClick={() =>
                     window.dispatchEvent(new CustomEvent("hero-shuffle"))
                   }
-                  className="flex items-center gap-1.5 text-[0.78rem] font-medium text-text-secondary px-3 py-1.5 hover:text-text-primary hover:bg-[rgba(255,255,255,0.05)] transition-colors border-none bg-transparent cursor-pointer whitespace-nowrap"
-                  data-squircle="8"
+                  className="flex items-center gap-1 text-[0.72rem] font-medium text-text-secondary px-2 py-1 hover:text-text-primary hover:bg-[rgba(255,255,255,0.05)] transition-colors border-none bg-transparent cursor-pointer whitespace-nowrap"
+                  data-squircle="6"
                   aria-label="Shuffle floating objects"
                 >
                   <ShuffleIcon />
                   Shuffle
+                </motion.button>
+
+                {/* Close Button */}
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: 0.25 }}
+                  onClick={() => setExpanded(false)}
+                  className="flex items-center justify-center w-6 h-6 text-text-tertiary hover:text-text-primary hover:bg-[rgba(255,255,255,0.05)] transition-colors border-none bg-transparent cursor-pointer"
+                  data-squircle="4"
+                  aria-label="Close navigation"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <line x1="2" y1="2" x2="10" y2="10" />
+                    <line x1="10" y1="2" x2="2" y2="10" />
+                  </svg>
                 </motion.button>
               </motion.div>
             )}
