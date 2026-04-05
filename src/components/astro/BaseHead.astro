@@ -48,3 +48,19 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
 <!-- Sitemap -->
 <link rel="sitemap" href="/sitemap-index.xml" />
+
+<!-- Theme: blocking script to prevent FOUC -->
+<script is:inline>
+  (function () {
+    var stored = localStorage.getItem("theme");
+    var theme;
+    if (stored === "light" || stored === "dark") {
+      theme = stored;
+    } else {
+      theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
