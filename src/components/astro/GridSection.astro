@@ -1,0 +1,71 @@
+---
+/**
+ * GridSection — Structural grid wrapper inspired by Vercel's layout system.
+ *
+ * Renders vertical guide lines and cross (+) markers at section boundaries.
+ * Content is placed inside a 4-column grid that aligns with the guides.
+ */
+
+interface Props {
+  border?: "top" | "bottom" | "both" | "none";
+  crosses?: "top" | "bottom" | "both" | "none";
+  class?: string;
+  innerClass?: string;
+  fullWidth?: boolean;
+  id?: string;
+}
+
+const {
+  border = "none",
+  crosses = "none",
+  class: className,
+  innerClass,
+  fullWidth = false,
+  id,
+} = Astro.props;
+
+const showTopBorder = border === "top" || border === "both";
+const showBottomBorder = border === "bottom" || border === "both";
+const showTopCrosses = crosses === "top" || crosses === "both";
+const showBottomCrosses = crosses === "bottom" || crosses === "both";
+---
+
+<section id={id} class:list={["grid-section", className]} aria-hidden={false}>
+  {/* Vertical guide lines */}
+  <div class="grid-guides" aria-hidden="true">
+    <div class="grid-guide grid-guide-1"></div>
+    <div class="grid-guide grid-guide-2"></div>
+    <div class="grid-guide grid-guide-3"></div>
+    <div class="grid-guide grid-guide-4"></div>
+    <div class="grid-guide grid-guide-5"></div>
+  </div>
+
+  {/* Top border + crosses */}
+  {showTopBorder && <div class="grid-border grid-border-top" aria-hidden="true"></div>}
+  {showTopCrosses && (
+    <div class="grid-crosses grid-crosses-top" aria-hidden="true">
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+    </div>
+  )}
+
+  {/* Content */}
+  <div class:list={["grid-content", fullWidth && "grid-content-full", innerClass]}>
+    <slot />
+  </div>
+
+  {/* Bottom border + crosses */}
+  {showBottomBorder && <div class="grid-border grid-border-bottom" aria-hidden="true"></div>}
+  {showBottomCrosses && (
+    <div class="grid-crosses grid-crosses-bottom" aria-hidden="true">
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+      <span class="grid-cross"><span class="cross-h"></span><span class="cross-v"></span></span>
+    </div>
+  )}
+</section>

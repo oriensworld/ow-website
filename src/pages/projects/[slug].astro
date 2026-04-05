@@ -1,8 +1,10 @@
 ---
 import BaseLayout from "@layouts/BaseLayout.astro";
-import Section from "@components/astro/Section.astro";
+import GridSection from "@components/astro/GridSection.astro";
+import TableOfContents from "@components/astro/TableOfContents.astro";
 import { getCollection, render } from "astro:content";
-import { formatDate } from "@lib/utils";
+import { formatDate, formatDateFull, readingTime } from "@lib/utils";
+import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR } from "@lib/constants";
 
 export const prerender = true;
 
@@ -15,9 +17,10 @@ export async function getStaticPaths() {
 }
 
 const { project } = Astro.props;
-const { Content } = await render(project);
+const { Content, headings } = await render(project);
+const colors = CATEGORY_COLORS[project.data.category] ?? DEFAULT_CATEGORY_COLOR;
+const timeToRead = readingTime(project.body ?? "");
 
-// Related projects: share ≥1 tag, exclude self, max 3
 const allProjects = await getCollection("projects");
 const currentTags = new Set(project.data.tags);
 const related = allProjects
@@ -31,8 +34,8 @@ const related = allProjects
 ---
 
 <BaseLayout title={project.data.title} description={project.data.description}>
-  <Section class="pt-32 pb-24">
-    <div class="max-w-[800px] mx-auto">
+  <GridSection border="bottom" crosses="both" class="pt-32 pb-24">
+    <div class="relative max-w-[700px] mx-auto">
       {/* Back link */}
       <a
         href="/projects"
@@ -43,13 +46,24 @@ const related = allProjects
 
       {/* Header */}
       <div class="mb-12">
-        <div class="flex items-center gap-3 mb-4">
-          <span class="font-mono text-[0.65rem] text-teal tracking-[0.1em] uppercase">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4">
+          <span
+            class="font-mono text-[0.65rem] tracking-[0.1em] uppercase"
+            style={`color: ${colors.accent}`}
+          >
             {project.data.category}
           </span>
           <span class="text-text-tertiary">·</span>
           <span class="font-mono text-[0.65rem] text-text-tertiary">
-            {formatDate(project.data.date)}
+            Created at {formatDateFull(project.data.date)}
+          </span>
+          <span class="text-text-tertiary">·</span>
+          <span class="font-mono text-[0.65rem] text-text-tertiary">
+            Last updated at {formatDateFull(project.data.updatedDate ?? project.data.date)}
+          </span>
+          <span class="text-text-tertiary">·</span>
+          <span class="font-mono text-[0.65rem] text-text-tertiary">
+            {timeToRead}
           </span>
         </div>
 
@@ -95,42 +109,63 @@ const related = allProjects
         </div>
       </div>
 
+      {/* Cover image */}
+      {project.data.coverImage && (
+        <div class="mb-12 overflow-hidden" data-squircle="12">
+          <img
+            src={project.data.coverImage}
+            alt={project.data.title}
+            class="w-full h-auto"
+            loading="eager"
+          />
+        </div>
+      )}
+
       {/* Divider */}
       <hr class="border-border mb-12" />
 
-      {/* MDX Content */}
-      <div class="prose">
-        <Content />
+      {/* MDX Content + TOC */}
+      <div class="relative">
+        <div class="prose">
+          <Content />
+        </div>
+        <TableOfContents headings={headings} />
       </div>
     </div>
-  </Section>
+  </GridSection>
 
   {/* Related Projects */}
   {related.length > 0 && (
-    <Section class="py-16 border-t border-border">
-      <div class="max-w-[800px] mx-auto">
+    <GridSection border="top" crosses="top" class="py-16">
+      <div class="max-w-[700px] mx-auto">
         <p class="font-mono text-[0.7rem] tracking-[0.15em] uppercase text-text-tertiary mb-8">
           Related Projects
         </p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {related.map((r) => (
-            <a
-              href={`/projects/${r.id.replace(/\.mdx?$/, "")}`}
-              class="omnius-card block no-underline group"
-            >
-              <p class="font-mono text-[0.6rem] text-teal tracking-[0.1em] uppercase mb-1">
-                {r.data.category}
-              </p>
-              <h3 class="text-sm font-semibold text-text-primary mb-1 group-hover:text-teal transition-colors">
-                {r.data.title}
-              </h3>
-              <p class="text-xs font-normal text-text-secondary line-clamp-2">
-                {r.data.description}
-              </p>
-            </a>
-          ))}
+          {related.map((r) => {
+            const rColors = CATEGORY_COLORS[r.data.category] ?? DEFAULT_CATEGORY_COLOR;
+            return (
+              <a
+                href={`/projects/${r.id.replace(/\.mdx?$/, "")}`}
+                class="omnius-card block no-underline group"
+              >
+                <p
+                  class="font-mono text-[0.6rem] tracking-[0.1em] uppercase mb-1"
+                  style={`color: ${rColors.accent}`}
+                >
+                  {r.data.category}
+                </p>
+                <h3 class="text-sm font-semibold text-text-primary mb-1 group-hover:text-teal transition-colors">
+                  {r.data.title}
+                </h3>
+                <p class="text-xs font-normal text-text-secondary line-clamp-2">
+                  {r.data.description}
+                </p>
+              </a>
+            );
+          })}
         </div>
       </div>
-    </Section>
+    </GridSection>
   )}
 </BaseLayout>

@@ -1,0 +1,153 @@
+---
+interface Props {
+  headings: { depth: number; slug: string; text: string }[];
+}
+
+const { headings } = Astro.props;
+const tocItems = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
+---
+
+{tocItems.length > 0 && (
+  <nav
+    class="toc-wrapper hidden xl:block"
+    aria-label="Table of contents"
+  >
+    <div class="toc-sticky">
+      <p class="toc-label">On this page</p>
+      <ul class="toc-list">
+        {tocItems.map((heading) => (
+          <li>
+            <a
+              href={`#${heading.slug}`}
+              class:list={[
+                "toc-link",
+                { "toc-link--h3": heading.depth === 3 },
+              ]}
+              data-toc-slug={heading.slug}
+            >
+              {heading.text}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </nav>
+)}
+
+<style>
+  .toc-wrapper {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    margin-left: 2rem;
+    width: 200px;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .toc-sticky {
+    position: sticky;
+    top: 5rem;
+    pointer-events: auto;
+    max-height: calc(100vh - 6rem);
+    overflow-y: auto;
+  }
+
+  .toc-sticky::-webkit-scrollbar {
+    width: 0;
+  }
+
+  .toc-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-text-tertiary);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .toc-link {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color-text-tertiary);
+    text-decoration: none;
+    padding: 0.25rem 0 0.25rem 0.75rem;
+    border-left: 1px solid var(--color-border);
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .toc-link:hover {
+    color: var(--color-text-secondary);
+  }
+
+  .toc-link--h3 {
+    font-size: 0.7rem;
+    padding-left: 1.25rem;
+  }
+
+  .toc-link.active {
+    color: var(--color-text-primary);
+    border-left-color: var(--color-teal);
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    const links = document.querySelectorAll("[data-toc-slug]");
+    if (!links.length) return;
+
+    const slugs = Array.from(links).map((l) => l.dataset.tocSlug);
+    const headingEls = slugs
+      .map((s) => document.getElementById(s))
+      .filter(Boolean);
+
+    if (!headingEls.length) return;
+
+    let activeSlug = "";
+
+    function setActive(slug) {
+      if (slug === activeSlug) return;
+      activeSlug = slug;
+      links.forEach((link) => {
+        link.classList.toggle("active", link.dataset.tocSlug === slug);
+      });
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActive(entry.target.id);
+          }
+        }
+      },
+      { rootMargin: "-80px 0px -70% 0px" }
+    );
+
+    headingEls.forEach((el) => observer.observe(el));
+
+    links.forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const slug = link.dataset.tocSlug;
+        const target = document.getElementById(slug);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth" });
+          history.replaceState(null, "", "#" + slug);
+        }
+      });
+    });
+  })();
+</script>

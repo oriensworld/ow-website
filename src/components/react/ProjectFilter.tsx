@@ -1,16 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import ProjectCard from "./ProjectCard";
+import type { ProjectCardProject } from "./ProjectCard";
 
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  context?: string;
-  icon: string;
-  tags: string[];
-  featured: boolean;
-}
+type Project = ProjectCardProject;
 
 interface CategoryGroup {
   label: string;
@@ -150,7 +143,7 @@ export default function ProjectFilter({
                         : "bg-transparent text-text-tertiary hover:text-text-secondary"
                     }`}
                     style={{
-                      filter: activeChild === child ? "drop-shadow(0 0 0.5px rgba(45,212,191,0.4))" : undefined,
+                      filter: activeChild === child ? "drop-shadow(0 0 0.5px rgba(229,62,62,0.4))" : undefined,
                     }}
                     data-squircle="6"
                   >
@@ -191,52 +184,7 @@ export default function ProjectFilter({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-[1100px] mx-auto">
         <AnimatePresence mode="popLayout">
           {filtered.map((project) => (
-            <motion.a
-              key={project.id}
-              href={`/projects/${project.id}`}
-              layout
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="omnius-card block no-underline group"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <p className="font-mono text-[0.65rem] text-teal tracking-[0.1em] uppercase">
-                  {project.category}
-                </p>
-                {project.context && (
-                  <span
-                    className="font-mono text-[0.55rem] text-text-tertiary tracking-[0.08em] uppercase px-1.5 py-0.5"
-                    style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
-                    data-squircle="6"
-                  >
-                    {project.context}
-                  </span>
-                )}
-              </div>
-
-              <h3 className="text-base font-semibold tracking-tight text-text-primary mb-2 group-hover:text-teal transition-colors">
-                {project.title}
-              </h3>
-
-              <p className="text-sm font-normal leading-relaxed text-text-secondary mb-4">
-                {project.description}
-              </p>
-
-              <div className="flex gap-1.5 flex-wrap">
-                {project.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="font-mono text-[0.6rem] text-text-tertiary bg-[rgba(255,255,255,0.04)] px-2 py-0.5 group-hover:text-text-secondary transition-colors"
-                    style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
-                    data-squircle="6"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </motion.a>
+            <ProjectCard key={project.id} project={project} />
           ))}
         </AnimatePresence>
       </div>
