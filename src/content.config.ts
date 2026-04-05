@@ -11,15 +11,18 @@ const projects = defineCollection({
       "Software",
       "Web",
       "Graphics",
+      "Photography",
     ]),
     context: z
-      .enum(["Client Work", "Internal", "Collaborative", "R&D"])
+      .enum(["Client Work", "Internal", "Collaborative", "R&D", "Academic", "Individual"])
       .optional(),
     icon: z.string().default("◇"),
     coverImage: z.string().optional(),
+    coverImageGif: z.string().optional(),
     images: z.array(z.string()).default([]),
     tags: z.array(z.string()),
     date: z.coerce.date(),
+    updatedDate: z.coerce.date().optional(),
     featured: z.boolean().default(false),
     order: z.number().default(0),
     liveUrl: z.string().url().optional(),

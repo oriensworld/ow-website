@@ -1,0 +1,127 @@
+---
+title: "Daemon Starship"
+description: "A 2D space shooter with fixed-size entity pools, dual-radius collision, and 5 progressive enemy waves, built on a custom C++ engine."
+category: "Game Dev"
+context: "Academic"
+tags: ["C++", "DirectX 11", "FMOD", "2D"]
+date: 2024-08-15
+featured: false
+order: 10
+coverImageGif: "/images/projects/daemon-starship/cover.gif"
+repoUrl: "https://github.com/dadavidtseng/DaemonStarship"
+---
+
+import YouTubeEmbed from "@components/astro/YouTubeEmbed.astro";
+import ImageGallery from "@components/react/ImageGallery";
+import MermaidDiagram from "@components/react/MermaidDiagram";
+
+## Overview
+
+Daemon Starship is a classic 2D space shooter built in C++20 on the custom [Daemon Engine](/projects/daemon-engine). The player pilots a thrust-based starship through 5 progressive waves of enemies — beetles that chase directly, wasps that accelerate toward the player, and asteroids that drift with angular rotation — in a 200×100 unit wraparound world. Shooting, dodging, and surviving earns a score tracked on a persistent top-100 leaderboard saved to disk.
+
+This was my first C++ project — built before I knew about templates or `std::vector`. Every entity system uses fixed-size arrays with manual pool management, which turned out to be a strong foundation for consistent frame times. The dual-radius collision system and a particle debris system with velocity inheritance round out the core gameplay feel.
+
+[//]: # (![Daemon Starship gameplay]&#40;/images/projects/daemon-starship/cover.gif&#41;)
+
+<YouTubeEmbed id="BVTQtLVGYP8" title="DaemonStarship" caption="Gameplay demonstration showing entity pools and collision system" />
+
+## Highlights
+
+The fixed-size entity pools (up to 200,000 debris particles, 100 bullets, 30 asteroids) were an assignment requirement, but they ended up teaching me more about memory layout than any textbook could. Because I didn't know about `std::vector` or templates at the time, I wrote raw pre-allocated arrays with manual index tracking for every entity type. The result was zero heap allocation during gameplay and consistent 60 FPS — not because I was optimizing, but because I didn't know the "easier" way.
+
+<figure>
+    ![Gameplay screenshot](/images/projects/daemon-starship/game-mode-debris.gif)
+    <figcaption>Debris particle system with velocity inheritance</figcaption>
+</figure>
+
+The original code had the same for-loop pattern copy-pasted for every entity type in every function — Update, Render, DebugRender, DeleteGarbage:
+
+```cpp
+// Before: same loop repeated for every entity type, in every function
+void Game::RenderEntities() const {
+    for (int bulletIndex = 0; bulletIndex < MAX_BULLETS_NUM; bulletIndex++) {
+        if (!m_bullets[bulletIndex]) continue;
+        m_bullets[bulletIndex]->Render();
+    }
+    for (int asteroidIndex = 0; asteroidIndex < MAX_ASTEROIDS_NUM; asteroidIndex++) {
+        if (!m_asteroids[asteroidIndex]) continue;
+        m_asteroids[asteroidIndex]->Render();
+    }
+    // ... repeated for beetles, wasps, debris, boxes
+}
+```
+
+I later refactored these using C++20 templates to eliminate the duplication. A single `ForEachInPool` helper deduces the pool's element type and size at compile time, then iterates only over non-null slots:
+
+```cpp
+// The template that replaced every hand-written loop
+template <typename T, int N>
+void Game::ForEachInPool(T* (&pool)[N], auto&& fn) {
+    for (int i = 0; i < N; ++i) {
+        if (!pool[i]) continue;
+        fn(pool[i]);
+    }
+}
+```
+
+With that in place, every function that used to repeat the same loop 6 times collapsed to one-liners:
+
+```cpp
+// After: one lambda, all pools
+void Game::RenderEntities() const {
+    auto render = [](Entity const* e) { e->Render(); };
+
+    ForEachInPool(m_bullets,   render);
+    ForEachInPool(m_asteroids, render);
+    ForEachInPool(m_beetles,   render);
+    ForEachInPool(m_wasps,     render);
+    ForEachInPool(m_debris,    render);
+    ForEachInPool(m_boxes,     render);
+}
+```
+
+The dual-radius collision system was also required, but the implementation came from a game-feel insight I had during development. Each entity carries a conservative `physicsRadius` for actual hit detection and a liberal `cosmeticRadius` for visual bounds and off-screen culling. The reason: with a single radius, players would sometimes visually collide with an enemy but take no damage, or get hit by something that looked like a near miss. Separating the two radii let me tune the feel independently from the visuals — tighter physics for fairness, looser cosmetic for visual feedback.
+
+[//]: # (![Debug visualization showing collision radii]&#40;/images/projects/daemon-starship/screenshot-2.png&#41;)
+
+<MermaidDiagram client:only="react" chart={`graph LR
+    E[Entity] --> PR[physicsRadius<br/>Conservative]
+    E --> CR[cosmeticRadius<br/>Liberal]
+    PR -->|Hit Detection| D[Damage/Collision]
+    CR -->|Visual Bounds| C[Culling/Display]
+
+    style PR fill:#ff6b6b,stroke:#c92a2a,color:#fff
+    style CR fill:#4ecdc4,stroke:#0b7285,color:#fff
+` } caption="Dual-radius collision system architecture" />
+
+## What I Learned
+
+The most fun surprise came from going beyond the assignment. I added destructible boxes that spawn enemies after taking enough hits — this created emergent risk/reward gameplay where players had to decide whether to clear boxes early or focus on existing threats. The persistent scoreboard was another revelation — writing scores to disk with C++ file I/O felt like magic at the time because I genuinely didn't know the language could do that.
+
+<figure>
+    ![Gameplay screenshot](/images/projects/daemon-starship/game-mode-box-spawn-enemy.gif)
+    <figcaption>Box transforming into enemy after taking damage</figcaption>
+</figure>
+
+## Gallery
+
+<ImageGallery
+  client:visible
+  images={[
+    { src: "/images/projects/daemon-starship/attract-mode-ui.png", alt: "Title screen attract mode" },
+    { src: "/images/projects/daemon-starship/attract-mode-scoreboard.png", alt: "Top 100 high score leaderboard" },
+    { src: "/images/projects/daemon-starship/game-mode.png", alt: "Active gameplay with multiple enemy types" },
+    { src: "/images/projects/daemon-starship/game-mode-debris.png", alt: "Debris particle system with 200,000 particles" },
+    { src: "/images/projects/daemon-starship/game-mode-bullet.png", alt: "Bullet projectiles and combat" },
+  ]}
+/>
+
+## Technical Specifications
+
+| Component | Technology |
+|-----------|------------|
+| Language | C++20 |
+| Graphics | DirectX 11, HLSL |
+| Audio | FMOD |
+| Engine | Custom Daemon Engine |
+| Platform | Windows (x64) |

@@ -1,0 +1,104 @@
+---
+title: "Trashure"
+description: "A 2D RPG thesis project that uses gameplay as a medium to explore environmental issues, featuring field-research-based pixel art, an inventory system, NPC pathfinding, and a dialogue system."
+category: "Game Dev"
+context: "Academic"
+tags: ["C#", "Unity", "2D RPG", "Environmental Design"]
+date: 2023-05-15
+featured: false
+order: 13
+coverImageGif: "/images/projects/trashure/cover.gif"
+---
+
+import YouTubeEmbed from "@components/astro/YouTubeEmbed.astro";
+import ImageGallery from "@components/react/ImageGallery";
+import MermaidDiagram from "@components/react/MermaidDiagram";
+
+<YouTubeEmbed id="WnXg2lKyjyI" title="Trashure — Demo" />
+
+## Overview
+
+Trashure is a 2D RPG built in Unity as a thesis project exploring the question: what is the correlation between human gameplay and environmental issues? Against the backdrop of a thriving gaming industry and longstanding unresolved environmental problems, the game uses interactive storytelling to prompt players to subconsciously reevaluate environmental concerns while engaging in mainstream gameplay.
+
+The game world is constructed from field research — real urban photography is pixelated and embedded as interactive game maps, environmental sounds recorded on-site become scene-specific background audio, and waste management knowledge gathered through interviews is translated into NPC dialogues. The result is a dystopian worldview where players absorb environmental information through exploration and mission completion rather than traditional educational methods.
+
+
+## Design Process
+
+The project followed a research-driven design pipeline: field research informed both the visual and narrative content, which was then systematically integrated into game systems.
+
+<MermaidDiagram client:only="react" chart={`graph TD
+  subgraph FR["Field Research"]
+    PH["Photography"]
+    SR["Sound Recording"]
+    IV["Interviews"]
+  end
+  subgraph Pipelines["Content Pipelines"]
+    VIS["Visual (pixel art)"]
+    AUD["Audio (scene SFX)"]
+    KNW["Knowledge (waste routes)"]
+  end
+  subgraph Systems["Game Systems"]
+    INV["Inventory"]
+    DLG["Dialogue"]
+    NPC["NPC Pathfinding"]
+    SCN["Scene Transitions"]
+    MON["Monster AI"]
+  end
+  UE["Unity Engine"]
+
+  FR --> Pipelines --> Systems --> UE
+`} />
+
+| Layer | Description |
+|-------|-------------|
+| Field Research | On-site photography, sound recording, interviews with waste management workers |
+| Visual Pipeline | Vertical shooting method for urban documentation, pixelation into game-ready art |
+| Audio Pipeline | Environmental sounds recorded per location, integrated as scene-specific backgrounds |
+| Knowledge Integration | Waste disposal routes and recycling processes converted into NPC dialogue scripts |
+| Game Systems | Inventory, dialogue, scene transitions, NPC pathfinding, monster AI |
+
+## Features
+
+### Scene Transition & Sound System
+
+Transitioning between different scenes triggers cinematic animations, and the sound effects evolve with the change of scenes. Each gaming environment carries distinct background sounds sourced from field recordings, creating an immersive audio landscape tied to real locations.
+
+### Inventory System
+
+Items are encoded with distinct attributes — pickability, usability, and type classification — allowing the system to recognize them when picked up or discarded. The inventory bridges gameplay mechanics with environmental knowledge: waste items carry real-world disposal information.
+
+### Dialogue System & NPC Pathfinding
+
+Each non-playable character is assigned diverse dialogues for storytelling purposes, translating field research knowledge into in-game conversations. NPCs follow a shortest-path system that guides them to specific locations at certain times of the day, simulating realistic daily routines like garbage truck routes.
+
+### Field-Research-Based Pixel Art
+
+Urban areas are reinterpreted through photography and embedded into the game as interactive maps. The visual representation of waste is transformed into a satirical and adorable pixel art form through pixelation techniques, making environmental imagery approachable while preserving its documentary origin.
+
+## Gallery
+
+<ImageGallery
+  client:visible
+  images={[
+    { src: "/images/projects/trashure/trashure-01.webp", alt: "Trashure — game title screen" },
+    { src: "/images/projects/trashure/trashure-02.webp", alt: "Trashure — concept art and field research" },
+    { src: "/images/projects/trashure/trashure-03.webp", alt: "Trashure — pixel art environment from photography" },
+    { src: "/images/projects/trashure/trashure-04.webp", alt: "Trashure — game genre and market research" },
+    { src: "/images/projects/trashure/trashure-05.webp", alt: "Trashure — environmental educational game analysis" },
+    { src: "/images/projects/trashure/trashure-06.webp", alt: "Trashure — design process and system architecture" },
+    { src: "/images/projects/trashure/trashure-07.webp", alt: "Trashure — pixelation art style experiment" },
+    { src: "/images/projects/trashure/trashure-08.webp", alt: "Trashure — field research documentation" },
+  ]}
+/>
+
+## Technical Specifications
+
+| Component | Technology |
+|-----------|------------|
+| Language | C# |
+| Engine | Unity |
+| Genre | 2D RPG |
+| Art | Pixel art from field photography |
+| Audio | Field-recorded environmental sounds |
+| Platform | WebGL, Windows |

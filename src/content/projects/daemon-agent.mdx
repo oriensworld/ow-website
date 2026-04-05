@@ -1,0 +1,264 @@
+---
+title: "Daemon Agent"
+description: "A dual-language game application built on DaemonEngine that lets AI agents write game logic in JavaScript while C++ handles rendering at 60 FPS. Features async thread isolation, double-buffered state with dirty tracking, and KĀDI agent protocol for external tool invocation."
+category: "Game Dev"
+context: "Academic"
+tags: ["C++20", "JavaScript", "V8", "DirectX 11", "FMOD"]
+date: 2025-06-01
+featured: true
+order: 3
+coverImageGif: "/images/projects/daemon-agent/cover.gif"
+repoUrl: "https://github.com/dadavidtseng/DaemonAgent"
+---
+
+import YouTubeEmbed from "@components/astro/YouTubeEmbed.astro";
+import ImageGallery from "@components/react/ImageGallery";
+import MermaidDiagram from "@components/react/MermaidDiagram";
+
+## Overview
+
+[DaemonEngine](/projects/daemon-engine) can render, play audio, handle input, and run jobs. But it can't let an AI agent write game logic for it at runtime. That's the gap DaemonAgent fills. It's a game application built on top of DaemonEngine that embeds V8 JavaScript so that game logic lives in `.js` files that external agents can read, write, and modify while the C++ side keeps rendering at 60 FPS without interruption.
+
+DaemonAgent is one of the agents in my [AGENTS](/projects/agents) thesis project. In that system, worker agents are assigned tasks like "implement player movement" or "add a scoring system." They write JavaScript, and DaemonAgent executes it. It also exposes tools through the KĀDI protocol (WASD movement, screenshot capture, entity creation, etc.) so that other agents can interact with the running game over WebSocket without touching the codebase directly. The C++ engine becomes a runtime that AI agents develop against.
+
+This is part of my Master's thesis work at SMU Guildhall, in active development since June 2025. It's an individual project built on top of DaemonEngine (the shared engine library) and integrated into the KĀDI ecosystem that my thesis depends on.
+
+<YouTubeEmbed id="4JVqNaRK3T0" title="DaemonAgent" caption="AI agent writing and executing game logic at runtime" />
+
+## Architecture
+
+Execution starts at `App::Update()` on the main thread. Each frame, the main thread checks whether the V8 worker thread has finished executing JavaScript game logic. If it has, the three double-buffered state buffers swap (entities, camera, audio) and the next frame is triggered. If the worker is still running, the main thread skips the swap and renders with the last known state. This is what keeps C++ at 60 FPS regardless of how long JavaScript takes. The KĀDI protocol sits on the JavaScript side, exposing game tools to external agents over WebSocket.
+
+<MermaidDiagram client:only="react" chart={`flowchart LR
+  subgraph Worker["Worker Thread · V8"]
+    JOB[JSGameLogicJob] --> JSE[JSEngine]
+    JSE --> JSG[JSGame]
+    JSG --> SYS1[Input / Physics / Audio]
+    JSG --> SYS2[KADIGameControl]
+  end
+  subgraph Sync["Synchronization"]
+    BUF[StateBuffers]
+    CQ[CommandQueue SPSC]
+  end
+  subgraph Main["Main Thread · C++"]
+    APP[App::Update] --> SWAP[SwapBuffers]
+    SWAP --> RENDER[Renderer · DX11]
+  end
+  JSG -->|write back| BUF
+  JSG -->|submit| CQ
+  BUF -->|read front| SWAP
+  CQ -->|drain| APP
+`} caption="DaemonAgent dual-thread architecture — V8 worker writes state, C++ main thread reads and renders" />
+
+| Module | Description |
+|--------|-------------|
+| App | Application entry, frame loop, async synchronization with V8 worker thread |
+| JSGameLogicJob | Continuous worker thread that runs V8 JavaScript each frame |
+| JSEngine | JavaScript system registration framework with priority-based execution |
+| JSGame | Game coordinator: wires input, physics, audio, debug, and KĀDI systems |
+| EntityStateBuffer | Double-buffered entity transforms, meshes, and colors with dirty tracking |
+| CameraStateBuffer | Double-buffered camera projection and position state |
+| CommandQueue | Lock-free SPSC ring buffer for JS-to-C++ commands (mesh creation, resource loading) |
+| KADIGameControl | WebSocket-based AI agent protocol for external tool invocation |
+
+## Design Decisions
+
+### Why Double-Buffered State with Dirty Tracking Instead of Shared State
+
+The fundamental problem is that C++ rendering and JavaScript game logic run on separate threads at different speeds. They both need access to entity transforms, camera state, and audio commands. The question is how to share that data without one thread blocking the other.
+
+Double buffering was the first solution: JavaScript writes to the back buffer, C++ reads from the front buffer, and they swap once per frame. This worked, but I could feel it was slow. Every swap copied the entire state, even if only a handful of entities had changed. Adding dirty tracking fixed that. Each buffer entry has a dirty flag, and `SwapBuffers()` only copies entries that were actually modified, making the swap O(d) instead of O(n) where d is the number of dirty entries. The performance gain was immediately noticeable.
+
+<MermaidDiagram client:only="react" chart={`graph LR
+    subgraph MX["Mutex ✗"]
+        direction TB
+        MX1[JS Thread] -->|lock| MXS[(Shared)]
+        MX2[C++ Thread] -->|lock| MXS
+        MXS -.->|blocks| MX1
+    end
+    subgraph MP["Message Passing ✗"]
+        direction TB
+        MP1[JS Thread] -->|serialize| MPQ[(Queue)]
+        MPQ -->|deserialize| MP2[C++ Thread]
+    end
+    subgraph DB["Double Buffer ✓"]
+        direction TB
+        DB1[JS Thread] -->|write| DBB[(Back)]
+        DBF[(Front)] -->|read| DB2[C++ Thread]
+        DBB -->|swap| DBF
+    end
+    MX ~~~ MP ~~~ DB
+
+    style MX fill:#ff6b6b22,stroke:#c92a2a
+    style MP fill:#ffd43b22,stroke:#e67700
+    style DB fill:#4ecdc422,stroke:#0b7285
+` } caption="Thread synchronization approaches — double buffering wins on contention and snapshot consistency" />
+
+Double buffering with dirty tracking gives snapshot consistency, zero contention, and minimal copy cost — mutexes block, message-passing serializes.
+
+The `StateBuffer<T>` template handles this. The worker thread marks the buffer dirty on write, and `SwapBuffers()` checks the flag before acquiring the lock. When dirty tracking is enabled, only modified keys are copied:
+
+```cpp
+void SwapBuffers() {
+    // Skip entirely if nothing changed (atomic check, no lock needed)
+    if (!m_isDirty.load(std::memory_order_acquire)) {
+        ++m_skippedSwaps;
+        return;
+    }
+
+    std::unique_lock<std::timed_mutex> lock(m_swapMutex, std::defer_lock);
+    if (!lock.try_lock_for(SWAP_MUTEX_TIMEOUT)) {
+        ++m_timeoutCount;  // Deadlock prevention: preserve stale front buffer
+        return;
+    }
+
+    if (m_dirtyTrackingEnabled) {
+        // O(d) — copy only dirty entries instead of entire buffer
+        for (auto const& key : m_dirtyKeys) {
+            auto it = m_backBuffer->find(key);
+            if (it != m_backBuffer->end())
+                (*m_frontBuffer)[key] = it->second;
+        }
+        m_dirtyKeys.clear();
+    } else {
+        *m_frontBuffer = *m_backBuffer;  // O(n) full copy fallback
+    }
+
+    std::swap(m_frontBuffer, m_backBuffer);
+    m_isDirty.store(false, std::memory_order_release);
+}
+```
+
+This gives snapshot consistency with zero contention on the hot path — the worker never blocks, and the main thread only pays for what changed.
+
+### Why a Lock-Free SPSC Ring Buffer for the Command Queue
+
+Some operations can't be double-buffered because they need to execute on the main thread: creating a mesh, loading a resource, spawning an entity with a GPU-side handle. These are commands, not state. JavaScript submits them, and C++ executes them next frame.
+
+A lock-free single-producer single-consumer ring buffer fits this exactly. JavaScript is the only producer, C++ is the only consumer, and the ring buffer guarantees ordering without any mutex. The main thread drains the queue each frame, so commands are processed as fast as the frame rate allows without ever blocking the render loop. A mutex-protected queue would work functionally, but every lock/unlock pair is a potential stall point, and when agents are making rapid tool calls, those stalls add up.
+
+The submit/drain pattern is straightforward. JavaScript submits commands via `Enqueue()`, and the main thread drains them each frame with `ConsumeAll()`:
+
+```cpp
+// JavaScript side (worker thread): submit a command
+m_genericCommandQueue->Enqueue(GenericCommand{
+    "CreateMesh", {{"type", "cube"}, {"size", "1.0"}}
+});
+
+// C++ side (main thread): drain all pending commands
+void App::ProcessGenericCommands() {
+    m_genericCommandQueue->ConsumeAll([this](GenericCommand const& cmd) {
+        m_genericCommandExecutor->ExecuteCommand(cmd);
+    });
+}
+```
+
+The ring buffer guarantees ordering without any mutex — JavaScript is the only producer, C++ is the only consumer, and commands execute in the correct frame phase on the main thread.
+
+### Why Per-Agent Rate Limiting on the GenericCommand Pipeline
+
+This was a precaution, not a reaction to a bug. In the [AGENTS](/projects/agents) system, multiple external agents can connect to DaemonAgent simultaneously and invoke tools. If an agent decides to create 500 cubes in a single burst, the command queue fills up and the main thread spends its entire frame budget processing commands instead of rendering. Rate limiting caps the number of commands any single agent can submit per frame, so one misbehaving agent can't starve the render loop. It's a simple counter reset per frame, but it prevents a class of problems that would be painful to debug in a multi-agent environment.
+
+### Why KĀDI Protocol Instead of REST or stdin/stdout
+
+<MermaidDiagram client:only="react" chart={`graph LR
+    subgraph REST["REST ✗"]
+        direction TB
+        RA[Agent] -->|req| RS[DaemonAgent]
+        RS -->|res| RA
+    end
+    subgraph STDIO["stdio ✗"]
+        direction TB
+        SA[Agent] <-->|pipe| SS[DaemonAgent]
+    end
+    subgraph KADI["KĀDI ✓"]
+        direction TB
+        KA1[Agent TS] <-->|WS| KB[kadi-broker]
+        KA2[Agent Py] <-->|WS| KB
+        KB <-->|WS| KD[DaemonAgent]
+    end
+    REST ~~~ STDIO ~~~ KADI
+
+    style REST fill:#ff6b6b22,stroke:#c92a2a
+    style STDIO fill:#ffd43b22,stroke:#e67700
+    style KADI fill:#4ecdc422,stroke:#0b7285
+` } caption="Communication protocol comparison — KĀDI provides bidirectional, cross-language, cross-machine messaging" />
+
+KĀDI provides WebSocket-based bidirectional messaging with a JSON-RPC-like tool invocation pattern, and it's the same protocol the entire [AGENTS](/projects/agents) ecosystem uses through kadi-broker. DaemonAgent plugs into the multi-agent network as a first-class participant rather than a special case with its own communication layer.
+
+## Challenges
+
+### Replacing C++ Game Logic with JavaScript for the First Time
+
+The hardest bug wasn't a crash. It was nothing rendering at all. When I first moved game logic from C++ to JavaScript, the screen went black. No error, no exception, no crash. The engine was running, the frame loop was ticking, but nothing appeared.
+
+The problem with debugging a dual-language system is that when JavaScript is broken, some failures are silent on the C++ side. The C++ renderer only knows what the state buffers tell it, and if JavaScript never writes to them, the renderer dutifully draws nothing. I couldn't set breakpoints in JavaScript the way I could in C++ (this was before I had Chrome DevTools integration working), so I was debugging through console logging, tracing which JavaScript systems were executing and which weren't, and comparing the output against what the C++ version had been doing. The fix was mundane (an initialization ordering issue in the JavaScript system registration), but finding it took longer than any C++ bug because the feedback loop was so much slower.
+
+<figure>
+    ![DevConsole debugging](/images/projects/daemon-agent/devconsole-debug.png)
+    <figcaption>DevConsole output tracing JavaScript system registration during the blank screen bug</figcaption>
+</figure>
+
+### Accidentally Exposing a Render Function Instead of a Tool Call
+
+When I exposed the debug render system to JavaScript, I made a mistake that produced a visually obvious but conceptually subtle bug. Instead of exposing a single tool call that queues a debug draw command, I exposed the actual render function. The result: debug lines flickered on screen because JavaScript was calling render directly on the worker thread while C++ was also rendering on the main thread. Two threads writing to the same render state with no synchronization.
+
+The fix came naturally once I refactored to the async generic JSON command system. Every JavaScript-to-C++ operation now goes through the command queue, which means it executes on the main thread in the correct frame phase. The flickering disappeared because debug draw commands were no longer racing against the renderer. This was one of the bugs that validated the entire command queue architecture: if everything goes through the queue, this class of threading bug simply can't happen.
+
+{/* NOTE: No visual needed here. The flickering is hard to capture in a screenshot,
+     and the lesson is architectural, not visual. */}
+
+### Debugging at the KĀDI Boundary
+
+This is the same challenge I face in [AGENTS](/projects/agents), but from the other side. KĀDI is still in active development, and when something breaks in the WebSocket communication between DaemonAgent and an external agent, I often can't immediately tell whether the bug is in my tool registration code, in the KĀDI protocol layer, or in the broker infrastructure. Most of the time it turns out to be a KĀDI-side issue that gets resolved upstream, but the time spent isolating the problem is real.
+
+I don't have a profiler integrated into DaemonEngine yet, which makes performance-related KĀDI issues harder to diagnose. I've tested DaemonAgent running continuously for nearly 20 hours without a crash, so stability isn't the concern. The concern is that without proper instrumentation, I'm relying on external symptoms rather than internal metrics to detect problems. Adding a profiler subsystem to DaemonEngine is on the roadmap.
+
+## Code
+
+The `App::Update()` frame loop is where the two threads meet. Each frame, the main thread checks whether the V8 worker has finished its JavaScript execution. If it has, all three state buffers swap (only dirty entries are copied) and the next frame is triggered. If the worker is still running, the main thread skips the swap and renders with stale state. This is the mechanism that keeps C++ at 60 FPS regardless of JavaScript performance. The frame skip path is not an error case; it's the normal operating mode when JavaScript takes longer than one frame.
+
+```cpp
+void App::Update()
+{
+    // ... input, clock, subsystem updates ...
+
+    if (m_jsGameLogicJob && m_jsGameLogicJob->IsFrameComplete())
+    {
+        // Swap only dirty entries from back buffer to front buffer
+        if (m_entityStateBuffer) m_entityStateBuffer->SwapBuffers();
+        if (m_cameraStateBuffer) m_cameraStateBuffer->SwapBuffers();
+        if (m_audioStateBuffer)  m_audioStateBuffer->SwapBuffers();
+
+        m_jsGameLogicJob->TriggerNextFrame();
+    }
+    // else: frame skip — worker still executing, render last known state
+
+    // ... rendering with front buffer data ...
+}
+```
+
+## Gallery
+
+<ImageGallery
+  client:visible
+  images={[
+    { src: "/images/projects/daemon-agent/chrome-devtools.png", alt: "Chrome DevTools connected to V8 on port 9229 for JavaScript debugging" },
+    { src: "/images/projects/daemon-agent/kadi-tools.png", alt: "External agent invoking KĀDI tools over WebSocket" },
+    { src: "/images/projects/daemon-agent/js-entities.png", alt: "Game rendering entities created by JavaScript game logic" },
+  ]}
+/>
+
+## Technical Specifications
+
+| Component | Technology |
+|-----------|------------|
+| Language | C++20 / JavaScript ES6+ |
+| Scripting | Google V8 v13.0, Chrome DevTools (port 9229) |
+| Rendering | DirectX 11 (via DaemonEngine) |
+| Audio | FMOD Core SDK 2.x |
+| Threading | Custom JobSystem with SPSC lock-free queues |
+| Agent Protocol | KĀDI (WebSocket + JSON-RPC) |
+| Build | Visual Studio 2022 (v143 toolset) |
+| Platform | Windows 10/11 (x64) |
+| Engine | [DaemonEngine](/projects/daemon-engine) |

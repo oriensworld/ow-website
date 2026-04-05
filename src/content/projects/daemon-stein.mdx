@@ -1,0 +1,153 @@
+---
+title: "Daemonstein"
+description: "A DOOM-inspired 3D first-person shooter with split-screen multiplayer, 8-directional sprite animation, sight-based enemy AI, and data-driven XML content, built on a custom C++ engine."
+category: "Game Dev"
+context: "Academic"
+tags: ["C++", "DirectX 11", "FPS", "Split-Screen"]
+date: 2024-11-01
+featured: false
+order: 12
+coverImageGif: "/images/projects/daemon-stein/cover.gif"
+repoUrl: "https://github.com/dadavidtseng/Daemonstein"
+---
+
+import YouTubeEmbed from "@components/astro/YouTubeEmbed.astro";
+import ImageGallery from "@components/react/ImageGallery";
+import MermaidDiagram from "@components/react/MermaidDiagram";
+
+## Overview
+
+Daemonstein is a DOOM-inspired first-person shooter built on [Daemon Engine](/projects/daemon-engine) as a series of course assignments at SMU Guildhall. Each assignment added a layer — tile-based maps, sprite-based enemies, weapons, AI, and finally local 2-player split-screen multiplayer. All game content (actors, weapons, maps, tile sets, animations) is defined in XML and loaded at runtime, so the game can be modded without recompiling.
+
+The project is essentially the 3D evolution of [Daemon Libra](/projects/daemon-libra)'s 2D systems — sight-based AI, tile maps, data-driven content — but adapted for a first-person perspective with billboarded sprites, raycasting weapons, and split-screen rendering.
+
+<YouTubeEmbed id="IJQC7h0gTng" title="Daemonstein" caption="Split-screen multiplayer gameplay with 8-directional sprite enemies" />
+
+<MermaidDiagram client:only="react" chart={`graph TD
+    Spawn[Enemy Spawns] --> Dist{Within Sight Radius?}
+    Dist -->|No| Idle[Idle / Wander]
+    Dist -->|Yes| FOV{Within FOV Cone?}
+    FOV -->|No| Idle
+    FOV -->|Yes| LOS{Line of Sight Clear?}
+    LOS -->|No| Idle
+    LOS -->|Yes| Chase[Chase Target]
+    Chase --> Range{In Melee Range?}
+    Range -->|No| Move[Move Toward Target]
+    Range -->|Yes| Attack[Attack]
+    Move --> Dist
+    Attack --> Dist
+
+    style Chase fill:#ff6b6b,stroke:#c92a2a,color:#fff
+    style Attack fill:#ff6b6b,stroke:#c92a2a,color:#fff
+    style Idle fill:#4ecdc4,stroke:#0b7285,color:#fff
+` } caption="AI detection pipeline: distance → FOV cone → line-of-sight → chase/attack" />
+
+## Highlights
+
+The split-screen multiplayer was the most technically involved feature. Each `PlayerController` owns a world camera (perspective, for 3D gameplay) and a view camera (orthographic, for HUD). The screen division uses normalized viewports — an `AABB2` from `(0,0)→(1,1)` for single player, split at `0.5` vertically for two players:
+
+```cpp
+// Single player: full screen
+m_localPlayerControllerList[0]->SetViewport(AABB2(Vec2::ZERO, Vec2::ONE));
+
+// Two players: split horizontally
+m_localPlayerControllerList[0]->SetViewport(AABB2(Vec2(0.f, 0.f), Vec2(1.f, 0.5f)));
+m_localPlayerControllerList[1]->SetViewport(AABB2(Vec2(0.f, 0.5f), Vec2(1.f, 1.f)));
+```
+
+`SetViewport()` applies the normalized region to both cameras, then converts to actual pixel coordinates based on window dimensions:
+
+```cpp
+AABB2 Controller::SetViewport(AABB2 const& viewPort) {
+    m_viewport = viewPort;
+    m_worldCamera->SetNormalizedViewport(viewPort);
+    m_viewCamera->SetNormalizedViewport(viewPort);
+    m_screenViewport = m_viewCamera->GetViewPortUnnormalized(
+        Vec2(Window::s_mainWindow->GetClientDimensions().x,
+             Window::s_mainWindow->GetClientDimensions().y));
+    return viewPort;
+}
+```
+
+Getting this right meant understanding how normalized device coordinates flow through the rendering pipeline — the math is straightforward, but debugging viewport misalignment when both cameras render to the wrong half of the screen was not.
+
+The 8-directional sprite animation produces the classic DOOM look where enemies appear 3D from any angle despite being flat billboarded images. The system uses dot product to find the closest matching direction from a dictionary of facing vectors:
+
+```cpp
+SpriteAnimDefinition const& AnimationGroup::GetSpriteAnimation(Vec3 const& direction) const {
+    Vec3  bestMatch     = direction;
+    float bestDotProduct = -FLT_MAX;
+
+    for (auto const& [facingVector, animation] : m_animationDict) {
+        float const dot = DotProduct3D(direction, facingVector);
+        if (dot > bestDotProduct) {
+            bestDotProduct = dot;
+            bestMatch      = facingVector;
+        }
+    }
+
+    return m_animationDict.at(bestMatch);
+}
+```
+
+Each animation group is loaded from XML with facing vectors and sprite frame ranges, so adding new enemy types or animation states requires no code changes — just new XML definitions and sprite sheets.
+
+The AI sight detection uses a three-stage pipeline: distance check → FOV cone → line-of-sight raycast. This avoids expensive raycasts for enemies that are clearly out of range:
+
+```cpp
+Actor const* Map::GetClosestVisibleEnemy(Actor const* owner) const {
+    for (Actor const* actor : m_actors) {
+        // Stage 1: Distance check
+        float distSq = GetDistanceSquared2D(actorPos, ownerPos);
+        if (distSq > owner->m_definition->m_sightRadius * owner->m_definition->m_sightRadius)
+            continue;
+
+        // Stage 2: FOV cone check
+        float angleBetween = GetAngleDegreesBetweenVectors2D(fwd2D, dirToActor);
+        if (angleBetween > owner->m_definition->m_sightAngle * 0.5f)
+            continue;
+
+        // Stage 3: Line-of-sight raycast (no walls blocking)
+        RaycastResult3D result = RaycastAll(owner, out_handle, eyePos, dir, distSq);
+        if (!result.m_didImpact) continue;
+        // ... track closest visible enemy
+    }
+}
+```
+
+The hardest part wasn't the direction math or AI logic — it was debugging the shader. Sometimes shadows rendered incorrectly, sometimes sprites disappeared entirely, and the cause wasn't obvious from the CPU side. This was when I started using RenderDoc to inspect the GPU pipeline frame-by-frame, which turned out to be one of the most useful debugging tools I picked up during this period.
+
+## What I Learned
+
+RenderDoc changed how I debug rendering issues. Before this project, I'd guess at shader problems by tweaking values and re-running. Being able to inspect individual draw calls, see exactly what the GPU received, and trace where a sprite disappeared in the pipeline made the 8-directional system debuggable instead of frustrating. The split-screen work reinforced that normalized coordinates are worth the upfront abstraction — the viewport system scales to any window size and player count without hardcoded pixel values.
+
+<figure>
+    ![Split-screen multiplayer](/images/projects/daemonstein/split-screen.png)
+    <figcaption>Local 2-player split-screen with independent viewports and HUDs</figcaption>
+</figure>
+
+## Gallery
+
+<ImageGallery
+  client:visible
+  images={[
+    { src: "/images/projects/daemonstein/gameplay-1.png", alt: "First-person gameplay with demon charging at player" },
+    { src: "/images/projects/daemonstein/split-screen.png", alt: "Split-screen multiplayer with two independent viewports" },
+    { src: "/images/projects/daemonstein/weapon-hud.png", alt: "Weapon HUD with plasma rifle equipped" },
+    { src: "/images/projects/daemonstein/8-dir-sprites.png", alt: "8-directional sprite animation from multiple angles" },
+  ]}
+/>
+
+## Technical Specifications
+
+| Component | Technology |
+|-----------|------------|
+| Language | C++20 (MSVC) |
+| Graphics | DirectX 11, HLSL (diffuse lighting) |
+| Audio | FMOD (3D positional audio) |
+| Data | XML definitions (actors, weapons, maps, tiles) |
+| Input | Keyboard/mouse + Xbox controller |
+| Multiplayer | Local 2-player horizontal split-screen |
+| AI | Sight-based detection (64-unit radius, 120-degree FOV) |
+| Engine | [DaemonEngine](/projects/daemon-engine) |
+| Platform | Windows (x64) |

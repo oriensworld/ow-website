@@ -1,0 +1,151 @@
+---
+title: "Daemon Libra"
+description: "A 2D top-down tank shooter with heat-map AI pathfinding, procedural map generation via worm algorithms, and bouncing bullet physics, built on a custom C++ engine."
+category: "Game Dev"
+context: "Academic"
+tags: ["C++", "DirectX 11", "FMOD", "AI", "Procedural Generation"]
+date: 2024-07-15
+featured: false
+order: 11
+coverImageGif: "/images/projects/daemon-libra/cover.gif"
+repoUrl: "https://github.com/dadavidtseng/DaemonLibra"
+---
+
+import YouTubeEmbed from "@components/astro/YouTubeEmbed.astro";
+import ImageGallery from "@components/react/ImageGallery";
+import MermaidDiagram from "@components/react/MermaidDiagram";
+
+## Overview
+
+Daemon Libra is a 2D top-down tank shooter built in C++20 on the custom [Daemon Engine](/projects/daemon-engine). The player controls a tank with dual-stick mechanics — WASD drives the body, IJKL aims the turret independently — and fights through 3 procedurally generated maps to reach the exit tile on each. Three enemy types patrol the terrain: Scorpio (stationary turret with laser sight), Leo (mobile tank using heat-map pathfinding), and Aries (high-HP melee rusher).
+
+Maps are generated at runtime using a worm algorithm that carves organic grass, sparkle, and water pathways through stone. An L-shaped safe zone guarantees traversable space, and a validation pass ensures start-to-exit reachability before spawning enemies. All map parameters — dimensions, worm counts, enemy spawn percentages — are configured in XML.
+
+<YouTubeEmbed id="EnPjNWZJ8cQ" title="Daemon Libra" caption="Gameplay demonstration showing heat-map pathfinding and procedural map generation" />
+
+<MermaidDiagram client:only="react" chart={`graph TD
+    Start[Enemy Spawn] --> LOS{Line of Sight?}
+    LOS -->|Yes| Chase[Chase Mode]
+    LOS -->|No| Wander[Wander Mode]
+    Chase --> HeatMap[Query Heat Map]
+    HeatMap --> Move[Move Toward Player]
+    Wander --> Random[Random Patrol]
+    Move --> LOS
+    Random --> LOS
+    
+    style Chase fill:#ff6b6b,stroke:#c92a2a,color:#fff
+    style Wander fill:#4ecdc4,stroke:#0b7285,color:#fff
+` } caption="Heat-map AI state machine with line-of-sight detection" />
+
+## Highlights
+
+The heat-map AI pathfinding uses Dijkstra-style distance fields with separate land and amphibian heat maps, so enemies can navigate terrain without per-entity pathfinding overhead. The algorithm floods outward from the player's position, assigning each tile a distance value:
+
+```cpp
+void Map::PopulateDistanceField(TileHeatMap const& heatMap, IntVec2 const& startCoords, float specialValue) const {
+    heatMap.SetValueAtAllTiles(specialValue);
+    heatMap.SetValueAtCoords(startCoords, 0.f);
+    
+    float currentSearchValue = 0.f;
+    bool isStillGoing = true;
+    
+    while (isStillGoing) {
+        isStillGoing = false;
+        for (int tileY = 0; tileY < m_dimensions.y; ++tileY) {
+            for (int tileX = 0; tileX < m_dimensions.x; ++tileX) {
+                IntVec2 tileCoords(tileX, tileY);
+                float value = heatMap.GetValueAtCoords(tileX, tileY);
+                
+                if (std::fabs(value - currentSearchValue) < FLOAT_MIN) {
+                    // Spread to cardinal neighbors
+                    IntVec2 neighbors[4] = {
+                        tileCoords + IntVec2(0, 1),  // North
+                        tileCoords + IntVec2(1, 0),  // East
+                        tileCoords + IntVec2(0, -1), // South
+                        tileCoords + IntVec2(-1, 0)  // West
+                    };
+                    
+                    float nextSearchValue = currentSearchValue + 1.f;
+                    for (auto& n : neighbors) {
+                        if (!IsTileCoordsOutOfBounds(n) && !IsTileSolid(n) && 
+                            heatMap.GetValueAtCoords(n) > nextSearchValue) {
+                            heatMap.SetValueAtCoords(n, nextSearchValue);
+                            isStillGoing = true;
+                        }
+                    }
+                }
+            }
+        }
+        currentSearchValue++;
+    }
+}
+```
+
+Line-of-sight detection switches behavior from wandering to chasing. The hardest part wasn't implementing it — it was knowing whether it was working correctly. I added debug text overlays to display each enemy's current state (wandering, chasing, attacking) in real time, which turned out to be essential for verifying the algorithm.
+
+<figure>
+    ![Heat map visualization](/images/projects/daemon-libra/game-mode-heat-map.png)
+    <figcaption>Dijkstra-style distance field showing enemy pathfinding gradients</figcaption>
+</figure>
+
+The bouncing bullet physics use raycasting ahead for wall detection and reflect off surface normals — player bullets bounce 3 times, enemy bullets don't. The interesting bug I hit was bullet tunneling: at high velocities, a bullet would move far enough in a single frame to pass entirely through a tile without ever intersecting it. The fix was to raycast along the bullet's trajectory instead of checking a single point:
+
+```cpp
+void Bullet::UpdateBody(float deltaSeconds) {
+    m_velocity = Vec2::MakeFromPolarDegrees(m_orientationDegrees, m_moveSpeed);
+    
+    // Raycast ahead to detect walls before tunneling through them
+    Ray2 ray = Ray2(m_position, m_velocity, 0.05f);
+    RaycastResult2D raycastResult = m_map->RaycastVsTiles(ray);
+    
+    Vec2 nextPosition = m_position + m_velocity * deltaSeconds;
+    
+    if (raycastResult.m_didImpact) {
+        m_health--;
+        
+        // Reflect off surface normal
+        IntVec2 normalInt = IntVec2(raycastResult.m_impactNormal);
+        Vec2 normal(static_cast<float>(normalInt.x), static_cast<float>(normalInt.y));
+        Vec2 reflectedVelocity = m_velocity.GetReflected(normal.GetNormalized());
+        m_orientationDegrees = Atan2Degrees(reflectedVelocity.y, reflectedVelocity.x);
+    } else {
+        m_position = nextPosition;
+    }
+}
+```
+
+Finding the root cause took longer than the fix — a good lesson in how physics bugs often masquerade as rendering issues until you instrument the right thing.
+
+## What I Learned
+
+The procedural map generation taught me how to balance randomness with playability. The worm algorithm carves organic terrain, but without validation, maps could spawn with unreachable exits. I added a reachability check using the same heat-map system that drives AI — if the exit tile has a distance value of 999 (the "unreachable" sentinel), the map regenerates. This dual-purpose use of the distance field was an elegant solution that avoided writing separate pathfinding logic.
+
+<figure>
+    ![Procedural map generation](/images/projects/daemon-libra/game-mode-pcg-map.png)
+    <figcaption>Worm algorithm carving organic pathways through stone tiles</figcaption>
+</figure>
+
+The XML data-driven design (map dimensions, worm parameters, enemy spawn percentages, tile definitions) made iteration fast — I could tweak enemy counts or map sizes without recompiling. This was my first experience with data-driven architecture, and it showed me why separating game logic from content is valuable for rapid prototyping.
+
+## Gallery
+
+<ImageGallery
+  client:visible
+  images={[
+    { src: "/images/projects/daemon-libra/attract-mode-ui.png", alt: "Title screen attract mode" },
+    { src: "/images/projects/daemon-libra/game-mode-player-tank.png", alt: "Player tank fighting Leo and Scorpio enemies" },
+    { src: "/images/projects/daemon-libra/game-mode-pcg-map.png", alt: "Procedurally generated map with worm-carved terrain" },
+    { src: "/images/projects/daemon-libra/game-mode-heat-map.png", alt: "Heat map debug visualization showing pathfinding gradients" },
+  ]}
+/>
+
+## Technical Specifications
+
+| Component | Technology |
+|-----------|------------|
+| Language | C++20 |
+| Graphics | DirectX 11, HLSL |
+| Audio | FMOD |
+| Data | XML definitions (maps, tiles) |
+| Engine | Custom Daemon Engine |
+| Platform | Windows (x64) |

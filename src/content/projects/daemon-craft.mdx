@@ -1,0 +1,63 @@
+---
+title: "DaemonCraft"
+description: "A Minecraft-inspired voxel game with 6-phase procedural terrain generation, multithreaded chunk system, and day/night lighting, built on a custom C++ engine."
+category: "Game Dev"
+context: "Academic"
+# TODO: Add coverImage once available
+tags: ["C++", "DirectX 11", "Procedural Generation", "Multithreading"]
+date: 2025-04-01
+featured: true
+order: 9
+coverImageGif: "/images/projects/daemon-craft/cover.gif"
+repoUrl: "https://github.com/dadavidtseng/DaemonCraft"
+---
+
+import YouTubeEmbed from "@components/astro/YouTubeEmbed.astro";
+import ImageGallery from "@components/react/ImageGallery";
+
+## Overview
+
+DaemonCraft is a Minecraft-inspired voxel game built on [Daemon Engine](/projects/daemon-engine) as a series of course assignments at SMU Guildhall. The base assignments introduced world generation, physics, camera, and lighting. Beyond the spec, I added an inventory system, crafting with a recipe registry, block audio effects (mining/placing), and a block registry — turning it from a rendering exercise into something that actually feels like Minecraft. Cave systems (cheese caverns and spaghetti tunnels), cross-chunk tree placement, and the day/night cycle were optional features I chose to implement.
+
+The part I'm most proud of is the procedural terrain generation and the multithreaded chunk system. The world generates infinite terrain using 6D noise (temperature, humidity, continentalness, erosion, weirdness, peaks and valleys), with 3D density-based terrain shaping, cave systems, ravines, rivers, and cross-chunk tree placement — all running on worker threads while the main thread renders at full speed.
+
+<YouTubeEmbed id="caSYzH4R96k" title="DaemonCraft — Demo" />
+
+## Highlights
+
+The terrain generation pipeline runs in 6 phases per chunk: base heightmap from noise, biome selection, 3D density carving, cave generation, surface decoration (trees, grass), and lighting propagation. Each phase feeds the next, and the entire pipeline runs on the engine's JobSystem worker threads. Chunks are 32×32×256 blocks, preloaded directionally based on player movement to hide generation latency. The job queue is rate-limited (16 generate, 4 load, 4 save) to prevent worker threads from starving the render loop. The chunk threading system uses an atomic state machine per chunk (CONSTRUCTING → GENERATING → GENERATED → ACTIVATING → ACTIVE) so the renderer never touches a chunk still being generated.
+
+The moment cave generation and light propagation started working together was when the project stopped feeling like a tech demo. Seeing sunlight cut off at a cave entrance, torches illuminating underground chambers, and cheese caverns opening into massive voids — it went from "simple Minecraft clone" to something with genuine atmosphere. Adding the inventory and crafting systems on top of that completed the loop: mine blocks, craft items, place blocks, explore caves. Each system was straightforward individually, but the combination produced emergent gameplay that felt much richer than the sum of its parts.
+
+## What I Learned
+
+The hardest bug was persistent flickering on cube faces during rendering. I spent significant time investigating texture coordinates, face normals, and z-fighting before discovering the real cause: I was issuing draw calls from a worker thread. DirectX 11 device contexts aren't thread-safe by default, and rendering from a worker thread produced intermittent visual corruption. The fix was simple (move all rendering back to the main thread), but finding it required eliminating every other hypothesis first. It changed how I think about thread boundaries — the rule isn't "be careful with shared state," it's "know exactly which operations are thread-safe and which aren't, and never assume."
+
+{/* TODO: Replace placeholder images with real screenshots:
+     1. World generation showing biome variety and terrain features
+     2. Cave system (cheese caverns or spaghetti tunnels) from inside
+     3. Day/night cycle comparison or lighting propagation */}
+{/*
+<ImageGallery
+  client:visible
+  images={[
+    { src: "/images/projects/daemon-craft/screenshot-1.png", alt: "Procedural terrain with biome variety" },
+    { src: "/images/projects/daemon-craft/screenshot-2.png", alt: "Cave system interior with light propagation" },
+    { src: "/images/projects/daemon-craft/screenshot-3.png", alt: "Day/night cycle lighting comparison" },
+  ]}
+/>
+*/}
+
+## Technical Specifications
+
+| Component | Technology |
+|-----------|------------|
+| Language | C++20 (MSVC) |
+| Graphics | DirectX 11, HLSL |
+| Audio | FMOD |
+| Threading | Custom JobSystem (N-1 generic + 1 I/O worker) |
+| World | Chunk-based (32x32x256), 6-phase procedural generation |
+| Data | JSON registries (blocks, items, recipes), XML config |
+| AI | KADI WebSocket agent framework |
+| Engine | [DaemonEngine](/projects/daemon-engine) |
+| Platform | Windows (x64) |
