@@ -9,6 +9,8 @@ interface FloatingProject {
   title: string;
   icon: string;
   category: string;
+  context?: string;
+  tags?: string[];
   slug: string;
   coverImage?: string;
   coverImageGif?: string;
@@ -17,6 +19,18 @@ interface FloatingProject {
 interface Props {
   projects?: FloatingProject[];
 }
+
+// ════════════════════════════════════════════════════════════════════
+// Constants
+// ════════════════════════════════════════════════════════════════════
+
+const SIZE_DIMS = {
+  sm: { w: 160, h: 96 },
+  md: { w: 220, h: 132 },
+  lg: { w: 280, h: 168 },
+} as const;
+
+type FloaterSize = keyof typeof SIZE_DIMS;
 
 // ════════════════════════════════════════════════════════════════════
 // Seeded random — deterministic per seed+index for stable layouts
@@ -30,12 +44,156 @@ function seededRandom(seed: number, index: number): () => number {
   };
 }
 
-function randomPos(seed: number, index: number): Record<string, string> {
+/** Generate a seeded 0-1 ratio pair for top/left. */
+function randomRatios(seed: number, index: number): [number, number] {
   const rand = seededRandom(seed, index);
+  return [rand(), rand()];
+}
+
+/** Convert ratios to pixel positions. Card is guaranteed in-bounds. */
+function ratiosToPos(
+  ratios: [number, number],
+  containerW: number,
+  containerH: number,
+  size: FloaterSize,
+): { top: number; left: number } {
+  const { w, h } = SIZE_DIMS[size];
   return {
-    top: `${2 + rand() * 90}%`,
-    left: `${2 + rand() * 88}%`,
+    top: ratios[0] * Math.max(0, containerH - h),
+    left: ratios[1] * Math.max(0, containerW - w),
   };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Derive media paths from GIF path
+// ════════════════════════════════════════════════════════════════════
+
+function deriveMedia(gifPath: string) {
+  const base = gifPath.replace(/\.[^.]+$/, "");
+  return { poster: `${base}-poster.webp`, mp4: `${base}.mp4`, webm: `${base}.webm` };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FloatingCard — fixed size, overlay text on hover, GIF on hover
+// ════════════════════════════════════════════════════════════════════
+
+function FloatingCard({
+  project,
+  size,
+  isHovered,
+}: {
+  project: FloatingProject;
+  size: FloaterSize;
+  isHovered: boolean;
+}) {
+  const { w, h } = SIZE_DIMS[size];
+  const media = project.coverImageGif ? deriveMedia(project.coverImageGif) : null;
+  const posterSrc = project.coverImage || media?.poster || null;
+  const showTags = size !== "sm";
+
+  return (
+    <div
+      className="relative overflow-hidden transition-shadow duration-300"
+      style={{
+        width: w,
+        height: h,
+        filter: "drop-shadow(0 0 0.5px var(--color-border))",
+        boxShadow: isHovered ? "0 4px 32px rgba(0,0,0,0.4), 0 0 20px rgba(229,62,62,0.1)" : "none",
+      }}
+      data-squircle={size === "lg" ? "10" : "8"}
+    >
+      {/* Background image / video — always fills the card */}
+      {isHovered && media ? (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={media.poster}
+          className="absolute inset-0 w-full h-full object-cover object-top"
+          style={{ transform: "scale(1.05)", transition: "transform 0.5s ease" }}
+        >
+          <source src={media.webm} type="video/webm" />
+          <source src={media.mp4} type="video/mp4" />
+        </video>
+      ) : posterSrc ? (
+        <img
+          src={posterSrc}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500"
+          style={{ opacity: isHovered ? 1 : 0.9, transform: isHovered ? "scale(1.05)" : "scale(1)" }}
+          draggable={false}
+          loading="lazy"
+        />
+      ) : null}
+
+      {/* Gradient overlay — wipes up on hover */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          opacity: isHovered ? 1 : 0,
+          transform: isHovered ? "translateY(0)" : "translateY(40%)",
+          transition: "opacity 0.35s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.15) 100%)",
+        }}
+      />
+
+      {/* Top labels: category + context — slide down from top */}
+      <div
+        className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-2.5 pt-2 pointer-events-none"
+        style={{
+          opacity: isHovered ? 1 : 0,
+          transform: isHovered ? "translateY(0)" : "translateY(-100%)",
+          transition: "opacity 0.3s ease 0.05s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.05s",
+        }}
+      >
+        <span
+          className="text-[0.5rem] font-mono font-medium uppercase tracking-[0.08em] text-white/90 px-1.5 py-0.5"
+          style={{ background: "rgba(229,62,62,0.7)", backdropFilter: "blur(4px)" }}
+          data-squircle="4"
+        >
+          {project.category}
+        </span>
+        {project.context && (
+          <span
+            className="text-[0.5rem] font-mono uppercase tracking-[0.08em] text-white/70 px-1.5 py-0.5"
+            style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(4px)" }}
+            data-squircle="4"
+          >
+            {project.context}
+          </span>
+        )}
+      </div>
+
+      {/* Bottom: title + tags — slide up from bottom */}
+      <div
+        className="absolute bottom-0 left-0 right-0 px-2.5 pb-2 pointer-events-none"
+        style={{
+          opacity: isHovered ? 1 : 0,
+          transform: isHovered ? "translateY(0)" : "translateY(100%)",
+          transition: "opacity 0.3s ease 0.08s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.08s",
+        }}
+      >
+        <p className={`font-semibold text-white leading-tight truncate ${size === "sm" ? "text-[0.65rem]" : "text-xs"}`}>
+          {project.title}
+        </p>
+        {showTags && project.tags && project.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {project.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[0.45rem] font-mono text-white/60 px-1 py-px uppercase tracking-wider"
+                style={{ background: "rgba(255,255,255,0.08)" }}
+                data-squircle="3"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -49,16 +207,25 @@ function Floater({
   delay = 0,
   drift = 1,
   href,
+  onHoverChange,
 }: {
   children: React.ReactNode;
   constraintRef: React.RefObject<HTMLDivElement | null>;
-  pos: Record<string, string>;
+  pos: { top: number; left: number };
   delay?: number;
   drift?: number;
   href?: string;
+  onHoverChange?: (hovered: boolean) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
-  const dragX = useMotionValue(0);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  // Reset drag offset when position changes (i.e. on shuffle)
+  useEffect(() => {
+    x.set(0);
+    y.set(0);
+  }, [pos.top, pos.left, x, y]);
 
   const handleClick = () => {
     if (!isDragging && href) window.location.href = href;
@@ -67,7 +234,7 @@ function Floater({
   return (
     <motion.div
       className="absolute z-10"
-      animate={pos}
+      animate={{ top: pos.top, left: pos.left }}
       transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
       style={{
         animation: `hero-drift-${drift} ${16 + drift * 4}s ease-in-out infinite`,
@@ -81,15 +248,19 @@ function Floater({
         dragTransition={{ bounceStiffness: 250, bounceDamping: 20 }}
         onDragStart={() => setIsDragging(true)}
         onDragEnd={() => setTimeout(() => setIsDragging(false), 50)}
+        onHoverStart={() => onHoverChange?.(true)}
+        onHoverEnd={() => onHoverChange?.(false)}
         onClick={handleClick}
         style={{
-          x: dragX,
+          x,
+          y,
           cursor: isDragging
             ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e53e3e' stroke-width='2' opacity='0.8'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23e53e3e'/%3E%3C/svg%3E") 16 16, grabbing`
             : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e53e3e' stroke-width='1.5' opacity='0.6'/%3E%3C/svg%3E") 16 16, grab`,
         }}
         initial={{ opacity: 0, scale: 0.6 }}
         animate={{ opacity: 1, scale: 1 }}
+        whileHover={{ zIndex: 40 }}
         whileDrag={{ scale: 1.1, zIndex: 50 }}
         transition={{
           duration: 0.8,
@@ -105,108 +276,37 @@ function Floater({
 }
 
 // ════════════════════════════════════════════════════════════════════
-// Floating Object Components
+// Floater config
 // ════════════════════════════════════════════════════════════════════
-
-/** Project card chip — shows cover image + title/category */
-function ProjectChip({ project }: { project: FloatingProject }) {
-  const coverSrc = project.coverImage || (project.coverImageGif ? project.coverImageGif.replace(/\.gif$/, "-poster.webp") : null);
-
-  return (
-    <div
-      className="relative bg-bg-card/80 backdrop-blur-sm overflow-hidden transition-all duration-300 group hover:bg-bg-card hover:shadow-[0_0_24px_rgba(229,62,62,0.12)]"
-      style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))", width: 240 }}
-      data-squircle="10"
-    >
-      {coverSrc && (
-        <div className="w-full h-[120px] overflow-hidden">
-          <img
-            src={coverSrc}
-            alt=""
-            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
-            draggable={false}
-            loading="lazy"
-          />
-        </div>
-      )}
-      <div className="px-5 py-3">
-        <p className="text-sm font-medium text-text-primary/70 group-hover:text-text-primary transition-colors leading-tight truncate">
-          {project.title}
-        </p>
-        <p className="text-[0.65rem] font-mono text-text-tertiary tracking-[0.08em] uppercase mt-0.5">
-          {project.category}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/** Image thumbnail — polaroid-like floating photo */
-function ImageThumb({
-  src,
-  size = "sm",
-}: {
-  src: string;
-  size?: "sm" | "md";
-}) {
-  const dims = size === "md" ? "w-[280px] h-[168px]" : "w-[220px] h-[132px]";
-  return (
-    <div
-      className={`${dims} overflow-hidden opacity-90 hover:opacity-100 transition-opacity duration-300`}
-      style={{ filter: "drop-shadow(0 0 0.5px var(--color-border))" }}
-      data-squircle="8"
-    >
-      <img
-        src={src}
-        alt=""
-        className="w-full h-full object-cover"
-        draggable={false}
-      />
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// Floater config types
-// ════════════════════════════════════════════════════════════════════
-
-type FloaterType =
-  | { kind: "chip"; projectIndex: number }
-  | { kind: "image"; projectIndex: number; size: "sm" | "md" };
 
 interface FloaterConfig {
-  type: FloaterType;
+  projectIndex: number;
+  size: FloaterSize;
   delay: number;
   drift: number;
 }
 
-// ════════════════════════════════════════════════════════════════════
-// Static floater definitions
-// ════════════════════════════════════════════════════════════════════
-
-function buildFloaterConfigs(): FloaterConfig[] {
+function buildFloaterConfigs(maxCount: number): FloaterConfig[] {
   const configs: FloaterConfig[] = [];
   let d = 0;
   const nextDelay = () => { d = (d + 0.3) % 2; return d; };
   const nextDrift = (i: number) => (i % 5) + 1;
+  const sizes: FloaterSize[] = ["sm", "md", "lg"];
 
-  // Project chips — 20 instances (reuse indices 0-11)
-  for (let i = 0; i < 20; i++) {
-    configs.push({ type: { kind: "chip", projectIndex: i % 12 }, delay: nextDelay(), drift: nextDrift(i) });
-  }
-
-  // Image thumbnails from project covers — 18 instances
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < maxCount; i++) {
     configs.push({
-      type: { kind: "image", projectIndex: i % 12, size: i % 3 === 0 ? "md" : "sm" },
-      delay: nextDelay(), drift: nextDrift(i),
+      projectIndex: i % 12,
+      size: sizes[i % 3],
+      delay: nextDelay(),
+      drift: nextDrift(i),
     });
   }
-
   return configs;
 }
 
-const FLOATER_CONFIGS = buildFloaterConfigs();
+const MAX_FLOATERS = 40;
+const FLOATER_CONFIGS = buildFloaterConfigs(MAX_FLOATERS);
+const DEFAULT_COUNT = 20;
 
 // ════════════════════════════════════════════════════════════════════
 // Main Hero Component
@@ -216,6 +316,22 @@ export default function HeroAnimated({ projects = [] }: Props) {
   const constraintRef = useRef<HTMLDivElement>(null);
   const p = projects.slice(0, 12);
   const [seed, setSeed] = useState(42);
+  const [count, setCount] = useState(DEFAULT_COUNT);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
+
+  // Measure container on mount + resize
+  useEffect(() => {
+    const measure = () => {
+      if (constraintRef.current) {
+        const rect = constraintRef.current.getBoundingClientRect();
+        setContainerSize({ w: rect.width, h: rect.height });
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   // Listen for shuffle event from Navbar
   useEffect(() => {
@@ -224,37 +340,29 @@ export default function HeroAnimated({ projects = [] }: Props) {
     return () => window.removeEventListener("hero-shuffle", handler);
   }, []);
 
-  // Compute positions for all floaters
-  const positions = useMemo(() => {
-    return FLOATER_CONFIGS.map((_, i) => randomPos(seed, i));
+  // Compute seeded ratios (stable per seed), then resolve to pixels
+  const ratios = useMemo(() => {
+    return FLOATER_CONFIGS.map((_, i) => randomRatios(seed, i));
   }, [seed]);
 
-  // Render a floater's content
-  const renderContent = (config: FloaterConfig) => {
-    const { type } = config;
-    switch (type.kind) {
-      case "chip": {
-        const project = p[type.projectIndex];
-        return project ? <ProjectChip project={project} /> : null;
-      }
-      case "image": {
-        const project = p[type.projectIndex];
-        if (!project) return null;
-        const src = project.coverImage || (project.coverImageGif ? project.coverImageGif.replace(/\.gif$/, "-poster.webp") : null);
-        return src ? <ImageThumb src={src} size={type.size} /> : null;
-      }
-    }
-  };
+  const positions = useMemo(() => {
+    if (!containerSize) return null;
+    return FLOATER_CONFIGS.map((config, i) =>
+      ratiosToPos(ratios[i], containerSize.w, containerSize.h, config.size)
+    );
+  }, [ratios, containerSize]);
+
+  const activeConfigs = FLOATER_CONFIGS.slice(0, count);
 
   return (
     <div
       ref={constraintRef}
       className="relative w-full h-dvh overflow-hidden"
     >
-      {/* ─── All Floating Objects ──────────────────────────────── */}
-      {FLOATER_CONFIGS.map((config, i) => {
-        const content = renderContent(config);
-        if (!content) return null;
+      {/* ─── Floating Objects (only after container is measured) ── */}
+      {positions && activeConfigs.map((config, i) => {
+        const project = p[config.projectIndex];
+        if (!project) return null;
         return (
           <Floater
             key={i}
@@ -262,17 +370,36 @@ export default function HeroAnimated({ projects = [] }: Props) {
             pos={positions[i]}
             delay={config.delay}
             drift={config.drift}
-            href={
-              config.type.kind === "chip" && p[config.type.projectIndex]
-                ? `/projects/${p[config.type.projectIndex].slug}`
-                : undefined
-            }
+            href={`/projects/${project.slug}`}
+            onHoverChange={(h) => setHoveredIndex(h ? i : null)}
           >
-            {content}
+            <FloatingCard
+              project={project}
+              size={config.size}
+              isHovered={hoveredIndex === i}
+            />
           </Floater>
         );
       })}
 
+      {/* ─── Count Slider ─────────────────────────────────────── */}
+      <div className="absolute bottom-20 left-6 z-50 flex items-center gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300">
+        <label className="text-[0.6rem] font-mono text-text-tertiary uppercase tracking-wider">
+          Objects
+        </label>
+        <input
+          type="range"
+          min={5}
+          max={MAX_FLOATERS}
+          step={1}
+          value={count}
+          onChange={(e) => setCount(Number(e.target.value))}
+          className="w-20 h-0.5 accent-teal cursor-pointer"
+        />
+        <span className="text-[0.6rem] font-mono text-text-tertiary tabular-nums w-5 text-right">
+          {count}
+        </span>
+      </div>
     </div>
   );
 }
