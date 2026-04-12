@@ -28,21 +28,18 @@ const hierarchy = CATEGORY_HIERARCHY.map((g) => ({
 ---
 
 <BaseLayout title="Projects" description="Selected work across architecture, software, game development, web, and graphic design.">
-  <GridSection border="bottom" crosses="bottom" class="pt-32 pb-8">
-    <div class="text-center mb-16">
-      <p class="font-mono text-[0.7rem] tracking-[0.15em] uppercase text-teal mb-4">
-        Portfolio
-      </p>
+  <GridSection border="bottom" crosses="bottom" class="pt-10 pb-5">
+    <div class="text-center mb-4">
       <h1 class="text-[2.5rem] font-bold tracking-tight">
         Projects
       </h1>
-      <p class="text-base font-normal text-text-secondary mt-4 max-w-[500px] mx-auto">
+      <p class="text-sm font-normal text-text-secondary mt-2 whitespace-nowrap">
         Our work across architecture, software, game development, web, and graphic design.
       </p>
     </div>
   </GridSection>
 
-  <GridSection class="pb-24 pt-8">
+  <GridSection class="pb-24 pt-5">
     <ProjectFilter
       client:load
       projects={projects}
