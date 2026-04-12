@@ -11,6 +11,8 @@ const heroProjects = allProjects
     title: p.data.title,
     icon: p.data.icon,
     category: p.data.category,
+    context: p.data.context,
+    tags: p.data.tags?.slice(0, 3) ?? [],
     slug: p.id.replace(/\.mdx?$/, ""),
     coverImage: p.data.coverImage,
     coverImageGif: p.data.coverImageGif,
