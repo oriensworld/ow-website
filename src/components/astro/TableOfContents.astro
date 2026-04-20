@@ -11,6 +11,7 @@ const tocItems = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
   <nav
     class="toc-wrapper hidden xl:block"
     aria-label="Table of contents"
+    data-toc-nav
   >
     <div class="toc-sticky">
       <p class="toc-label">On this page</p>
@@ -43,6 +44,15 @@ const tocItems = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
     width: 200px;
     height: 100%;
     pointer-events: none;
+    opacity: 0;
+    transform: translateX(8px);
+    transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .toc-wrapper.visible {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
   }
 
   .toc-sticky {
@@ -105,8 +115,9 @@ const tocItems = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 
 <script is:inline>
   (function () {
+    const tocNav = document.querySelector("[data-toc-nav]");
     const links = document.querySelectorAll("[data-toc-slug]");
-    if (!links.length) return;
+    if (!links.length || !tocNav) return;
 
     const slugs = Array.from(links).map((l) => l.dataset.tocSlug);
     const headingEls = slugs
@@ -115,6 +126,16 @@ const tocItems = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 
     if (!headingEls.length) return;
 
+    // Show TOC once scrolled past the first heading
+    var firstHeading = headingEls[0];
+    function checkTocVisibility() {
+      var rect = firstHeading.getBoundingClientRect();
+      tocNav.classList.toggle("visible", rect.top < 0);
+    }
+    window.addEventListener("scroll", checkTocVisibility, { passive: true });
+    checkTocVisibility();
+
+    // Active heading tracking
     let activeSlug = "";
 
     function setActive(slug) {
