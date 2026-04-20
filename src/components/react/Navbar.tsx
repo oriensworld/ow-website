@@ -190,7 +190,12 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [isHome, setIsHome] = useState(false);
   const contactBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setIsHome(window.location.pathname === "/");
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -381,21 +386,23 @@ export default function Navbar() {
                   <ContactDropdown open={contactOpen} onToggle={() => setContactOpen((o) => !o)} btnRef={contactBtnRef} />
                 </motion.div>
 
-                {/* Shuffle Button */}
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: 0.2 }}
-                  onClick={() =>
-                    window.dispatchEvent(new CustomEvent("hero-shuffle"))
-                  }
-                  className="flex items-center gap-1 text-[0.72rem] font-medium text-text-secondary px-2 py-1 hover:text-text-primary nav-hover transition-colors border-none bg-transparent cursor-pointer whitespace-nowrap"
-                  data-squircle="6"
-                  aria-label="Shuffle floating objects"
-                >
-                  <ShuffleIcon />
-                  Shuffle
-                </motion.button>
+                {/* Shuffle Button — only on homepage */}
+                {isHome && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                    onClick={() =>
+                      window.dispatchEvent(new CustomEvent("hero-shuffle"))
+                    }
+                    className="flex items-center gap-1 text-[0.72rem] font-medium text-text-secondary px-2 py-1 hover:text-text-primary nav-hover transition-colors border-none bg-transparent cursor-pointer whitespace-nowrap"
+                    data-squircle="6"
+                    aria-label="Shuffle floating objects"
+                  >
+                    <ShuffleIcon />
+                    Shuffle
+                  </motion.button>
+                )}
 
                 {/* Theme Toggle */}
                 <motion.div
@@ -440,16 +447,18 @@ export default function Navbar() {
           nap of the earth
         </a>
 
-        {/* Shuffle (mobile) */}
-        <button
-          onClick={() =>
-            window.dispatchEvent(new CustomEvent("hero-shuffle"))
-          }
-          className="flex items-center p-2 bg-transparent border-none cursor-pointer text-text-secondary hover:text-text-primary transition-colors"
-          aria-label="Shuffle"
-        >
-          <ShuffleIcon />
-        </button>
+        {/* Shuffle (mobile) — only on homepage */}
+        {isHome && (
+          <button
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("hero-shuffle"))
+            }
+            className="flex items-center p-2 bg-transparent border-none cursor-pointer text-text-secondary hover:text-text-primary transition-colors"
+            aria-label="Shuffle"
+          >
+            <ShuffleIcon />
+          </button>
+        )}
 
         {/* Theme Toggle (mobile) */}
         <ThemeToggle />
