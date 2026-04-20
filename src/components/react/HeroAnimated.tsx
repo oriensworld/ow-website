@@ -14,6 +14,7 @@ interface FloatingProject {
   slug: string;
   coverImage?: string;
   coverImageGif?: string;
+  featured?: boolean;
 }
 
 interface Props {
@@ -286,7 +287,15 @@ interface FloaterConfig {
   drift: number;
 }
 
-function buildFloaterConfigs(maxCount: number): FloaterConfig[] {
+function buildFloaterConfigs(projects: FloatingProject[], maxCount: number): FloaterConfig[] {
+  const featured = projects
+    .map((p, i) => ({ index: i, featured: !!p.featured }))
+    .filter((p) => p.featured);
+  const nonFeatured = projects
+    .map((p, i) => ({ index: i, featured: !!p.featured }))
+    .filter((p) => !p.featured);
+
+  const ordered = [...featured, ...nonFeatured];
   const configs: FloaterConfig[] = [];
   let d = 0;
   const nextDelay = () => { d = (d + 0.3) % 2; return d; };
@@ -294,9 +303,10 @@ function buildFloaterConfigs(maxCount: number): FloaterConfig[] {
   const sizes: FloaterSize[] = ["sm", "md", "lg"];
 
   for (let i = 0; i < maxCount; i++) {
+    const entry = ordered[i % ordered.length];
     configs.push({
-      projectIndex: i % 12,
-      size: sizes[i % 3],
+      projectIndex: entry.index,
+      size: i < featured.length ? "lg" : sizes[i % 3],
       delay: nextDelay(),
       drift: nextDrift(i),
     });
@@ -305,7 +315,6 @@ function buildFloaterConfigs(maxCount: number): FloaterConfig[] {
 }
 
 const MAX_FLOATERS = 40;
-const FLOATER_CONFIGS = buildFloaterConfigs(MAX_FLOATERS);
 const DEFAULT_COUNT = 20;
 
 // ════════════════════════════════════════════════════════════════════
@@ -319,6 +328,8 @@ export default function HeroAnimated({ projects = [] }: Props) {
   const [count, setCount] = useState(DEFAULT_COUNT);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
+
+  const floaterConfigs = useMemo(() => buildFloaterConfigs(p, MAX_FLOATERS), [p]);
 
   // Measure container on mount + resize
   useEffect(() => {
@@ -335,24 +346,68 @@ export default function HeroAnimated({ projects = [] }: Props) {
 
   // Listen for shuffle event from Navbar
   useEffect(() => {
-    const handler = () => setSeed((s) => s + 1);
+    const handler = () => {
+      setSeed((s) => s + 1);
+      setCount(Math.floor(Math.random() * (MAX_FLOATERS - 5 + 1)) + 5);
+    };
     window.addEventListener("hero-shuffle", handler);
     return () => window.removeEventListener("hero-shuffle", handler);
   }, []);
 
+  // Scroll-to-shuffle: wheel or touch scroll triggers shuffle
+  useEffect(() => {
+    const el = constraintRef.current;
+    if (!el) return;
+
+    let cooldown = false;
+    let touchStartY = 0;
+
+    const shuffle = () => {
+      if (cooldown) return;
+      cooldown = true;
+      window.dispatchEvent(new CustomEvent("hero-shuffle"));
+      setTimeout(() => { cooldown = false; }, 800);
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > 30) {
+        e.preventDefault();
+        shuffle();
+      }
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      const dy = touchStartY - e.changedTouches[0].clientY;
+      if (Math.abs(dy) > 40) shuffle();
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, []);
+
   // Compute seeded ratios (stable per seed), then resolve to pixels
   const ratios = useMemo(() => {
-    return FLOATER_CONFIGS.map((_, i) => randomRatios(seed, i));
-  }, [seed]);
+    return floaterConfigs.map((_, i) => randomRatios(seed, i));
+  }, [seed, floaterConfigs]);
 
   const positions = useMemo(() => {
     if (!containerSize) return null;
-    return FLOATER_CONFIGS.map((config, i) =>
+    return floaterConfigs.map((config, i) =>
       ratiosToPos(ratios[i], containerSize.w, containerSize.h, config.size)
     );
-  }, [ratios, containerSize]);
+  }, [ratios, containerSize, floaterConfigs]);
 
-  const activeConfigs = FLOATER_CONFIGS.slice(0, count);
+  const activeConfigs = floaterConfigs.slice(0, count);
 
   return (
     <div
