@@ -436,13 +436,13 @@ export default function Navbar() {
 
       {/* ─── Mobile: Compact pill + hamburger ─────────────────── */}
       <nav
-        className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] px-5 py-2.5 flex items-center gap-4 md:hidden ${bgClass}`}
+        className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-1.5 flex items-center gap-2 md:hidden ${bgClass}`}
         style={{ filter: filterStyle }}
         data-squircle="20"
       >
         <a
           href="/"
-          className="text-[0.85rem] font-bold text-text-primary no-underline tracking-tight"
+          className="text-[0.75rem] font-bold text-text-primary no-underline tracking-tight whitespace-nowrap"
         >
           nap of the earth
         </a>
@@ -453,7 +453,7 @@ export default function Navbar() {
             onClick={() =>
               window.dispatchEvent(new CustomEvent("hero-shuffle"))
             }
-            className="flex items-center p-2 bg-transparent border-none cursor-pointer text-text-secondary hover:text-text-primary transition-colors"
+            className="flex items-center p-1 bg-transparent border-none cursor-pointer text-text-secondary hover:text-text-primary transition-colors"
             aria-label="Shuffle"
           >
             <ShuffleIcon />
@@ -466,7 +466,7 @@ export default function Navbar() {
         {/* Hamburger */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="flex flex-col gap-1.5 p-2 bg-transparent border-none cursor-pointer z-[60]"
+          className="flex flex-col gap-1.5 p-1 bg-transparent border-none cursor-pointer z-[60]"
           aria-label="Toggle menu"
         >
           <motion.span
