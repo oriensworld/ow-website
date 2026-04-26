@@ -209,6 +209,7 @@ function Floater({
   drift = 1,
   href,
   onHoverChange,
+  draggable = true,
 }: {
   children: React.ReactNode;
   constraintRef: React.RefObject<HTMLDivElement | null>;
@@ -217,6 +218,7 @@ function Floater({
   drift?: number;
   href?: string;
   onHoverChange?: (hovered: boolean) => void;
+  draggable?: boolean;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const x = useMotionValue(0);
@@ -242,8 +244,8 @@ function Floater({
       }}
     >
       <motion.div
-        drag
-        dragConstraints={constraintRef}
+        drag={draggable}
+        dragConstraints={draggable ? constraintRef : undefined}
         dragElastic={0.12}
         dragMomentum
         dragTransition={{ bounceStiffness: 250, bounceDamping: 20 }}
@@ -255,14 +257,16 @@ function Floater({
         style={{
           x,
           y,
-          cursor: isDragging
-            ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e53e3e' stroke-width='2' opacity='0.8'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23e53e3e'/%3E%3C/svg%3E") 16 16, grabbing`
-            : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e53e3e' stroke-width='1.5' opacity='0.6'/%3E%3C/svg%3E") 16 16, grab`,
+          cursor: !draggable
+            ? "pointer"
+            : isDragging
+              ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e53e3e' stroke-width='2' opacity='0.8'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23e53e3e'/%3E%3C/svg%3E") 16 16, grabbing`
+              : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e53e3e' stroke-width='1.5' opacity='0.6'/%3E%3C/svg%3E") 16 16, grab`,
         }}
         initial={{ opacity: 0, scale: 0.6 }}
         animate={{ opacity: 1, scale: 1 }}
         whileHover={{ zIndex: 40 }}
-        whileDrag={{ scale: 1.1, zIndex: 50 }}
+        whileDrag={draggable ? { scale: 1.1, zIndex: 50 } : undefined}
         transition={{
           duration: 0.8,
           delay: 0.4 + delay,
@@ -315,7 +319,10 @@ function buildFloaterConfigs(projects: FloatingProject[], maxCount: number): Flo
 }
 
 const MAX_FLOATERS = 40;
+const MAX_FLOATERS_MOBILE = 8;
 const DEFAULT_COUNT = 20;
+const DEFAULT_COUNT_MOBILE = 5;
+const MOBILE_BREAKPOINT = 768;
 
 // ════════════════════════════════════════════════════════════════════
 // Main Hero Component
@@ -324,8 +331,10 @@ const DEFAULT_COUNT = 20;
 export default function HeroAnimated({ projects = [] }: Props) {
   const constraintRef = useRef<HTMLDivElement>(null);
   const p = projects.slice(0, 12);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT;
+  const maxCount = isMobile ? MAX_FLOATERS_MOBILE : MAX_FLOATERS;
   const [seed, setSeed] = useState(42);
-  const [count, setCount] = useState(DEFAULT_COUNT);
+  const [count, setCount] = useState(isMobile ? DEFAULT_COUNT_MOBILE : DEFAULT_COUNT);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
 
@@ -348,7 +357,8 @@ export default function HeroAnimated({ projects = [] }: Props) {
   useEffect(() => {
     const handler = () => {
       setSeed((s) => s + 1);
-      setCount(Math.floor(Math.random() * (MAX_FLOATERS - 5 + 1)) + 5);
+      const cap = window.innerWidth < MOBILE_BREAKPOINT ? MAX_FLOATERS_MOBILE : MAX_FLOATERS;
+      setCount(Math.floor(Math.random() * (cap - 5 + 1)) + 5);
     };
     window.addEventListener("hero-shuffle", handler);
     return () => window.removeEventListener("hero-shuffle", handler);
@@ -427,6 +437,7 @@ export default function HeroAnimated({ projects = [] }: Props) {
             drift={config.drift}
             href={`/projects/${project.slug}`}
             onHoverChange={(h) => setHoveredIndex(h ? i : null)}
+            draggable={!isMobile}
           >
             <FloatingCard
               project={project}
@@ -445,7 +456,7 @@ export default function HeroAnimated({ projects = [] }: Props) {
         <input
           type="range"
           min={5}
-          max={MAX_FLOATERS}
+          max={maxCount}
           step={1}
           value={count}
           onChange={(e) => setCount(Number(e.target.value))}
