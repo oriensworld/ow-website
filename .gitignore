@@ -32,3 +32,4 @@ npm-debug.log*
 
 # Prototypes (reference only)
 # prototypes/
+.serena/
