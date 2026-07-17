@@ -126,7 +126,7 @@ export default function ChatWidget() {
               {messages.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-sm text-text-tertiary mb-3">
-                    Hi! I'm the nap of the earth AI assistant.
+                    Hi! I'm the oriensworld AI assistant.
                   </p>
                   <p className="text-[0.75rem] text-text-tertiary">
                     Ask about our services, projects, capabilities, or anything else.

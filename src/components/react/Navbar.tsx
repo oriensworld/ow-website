@@ -322,7 +322,7 @@ export default function Navbar() {
                   href="/"
                   className="text-[0.85rem] font-bold text-text-primary no-underline tracking-tight hover:text-teal transition-colors duration-200 pl-3 pr-6 py-3"
                 >
-                  nap of the earth
+                  oriensworld
                 </a>
               </motion.div>
             ) : (
@@ -340,7 +340,7 @@ export default function Navbar() {
                   href="/"
                   className="text-[0.8rem] font-bold text-text-primary tracking-tight no-underline hover:text-teal transition-colors duration-200 whitespace-nowrap"
                 >
-                  nap of the earth
+                  oriensworld
                 </a>
 
                 {/* Separator */}
@@ -444,7 +444,7 @@ export default function Navbar() {
           href="/"
           className="text-[0.75rem] font-bold text-text-primary no-underline tracking-tight whitespace-nowrap"
         >
-          nap of the earth
+          oriensworld
         </a>
 
         {/* Shuffle (mobile) — only on homepage */}

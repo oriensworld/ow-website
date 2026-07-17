@@ -7,7 +7,7 @@ interface Props {
 
 const {
   title,
-  description = "nap of the earth — Architecture, Graphic Design, Web Development, Software Engineering, and Game Development services.",
+  description = "oriensworld — Architecture, Graphic Design, Web Development, Software Engineering, and Game Development services.",
   ogImage = "/og-image.png",
 } = Astro.props;
 
@@ -29,20 +29,20 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 <link rel="icon" type="image/png" href="/favicon.png" />
 
 <!-- SEO -->
-<title>{title} — nap of the earth</title>
+<title>{title} — oriensworld</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={canonicalURL} />
 
 <!-- Open Graph -->
 <meta property="og:type" content="website" />
 <meta property="og:url" content={canonicalURL} />
-<meta property="og:title" content={`${title} — nap of the earth`} />
+<meta property="og:title" content={`${title} — oriensworld`} />
 <meta property="og:description" content={description} />
 <meta property="og:image" content={new URL(ogImage, Astro.site)} />
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content={`${title} — nap of the earth`} />
+<meta name="twitter:title" content={`${title} — oriensworld`} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={new URL(ogImage, Astro.site)} />
 

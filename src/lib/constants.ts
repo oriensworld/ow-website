@@ -1,9 +1,9 @@
 export const SITE = {
-  title: "nap of the earth",
+  title: "oriensworld",
   description:
-    "nap of the earth — Architecture, Graphic Design, Web Development, Software Engineering, and Game Development services.",
+    "oriensworld — Architecture, Graphic Design, Web Development, Software Engineering, and Game Development services.",
   url: "https://napoftheearth.com",
-  author: "nap of the earth",
+  author: "oriensworld",
 } as const;
 
 export const NAV_ITEMS = [
